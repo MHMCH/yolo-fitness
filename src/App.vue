@@ -4,6 +4,7 @@ import { Plus, History, UserRound, ArrowLeft, ArrowRight, LogOut, Trash2, Calend
 import { useRegisterSW } from 'virtual:pwa-register/vue'
 import { useAuth } from './composables/useAuth'
 import { useTrainingSessions } from './composables/useTrainingSessions'
+import { useSessionSound } from './composables/useSessionSound'
 import { configured } from './lib/supabase'
 import { sessionRepository, type SessionRepository } from './lib/sessionRepository'
 import { displayDate, displayMonth } from './lib/trainingDates'
@@ -22,6 +23,7 @@ const canPreview = import.meta.env.DEV
 const iconUrl = `${import.meta.env.BASE_URL}favicon.png`
 const locked = computed(() => busy.value || loading.value || !online.value || !summary.value)
 const { needRefresh, updateServiceWorker } = useRegisterSW()
+const { enabled: soundEnabled, prepare: prepareSound, play: playSound, setEnabled: setSoundEnabled } = useSessionSound()
 watch(identity, () => { view.value = 'home'; name.value = ''; pastDate.value = ''; adding.value = false })
 watch(displayName, (value) => { name.value = value }, { immediate: true })
 async function submitSignIn() {
@@ -37,8 +39,15 @@ async function startPreview() {
 }
 async function addPast() {
   if (!pastDate.value) return
-  await training.log(pastDate.value)
+  await logSession(pastDate.value)
   if (!pending.value && !error.value) { adding.value = false; pastDate.value = '' }
+}
+async function logSession(date?: string) {
+  if (locked.value) return
+  const account = identity.value
+  prepareSound()
+  const saved = await training.log(date)
+  if (saved && identity.value === account) void playSound()
 }
 async function deleteEntry(id: string, date: string) {
   if (window.confirm(`Permanently delete the session on ${displayDate(date)}?`)) await training.remove(id)
@@ -94,7 +103,7 @@ async function deleteEntry(id: string, date: string) {
       <template v-if="view === 'home'">
         <div class="greeting"><p class="eyebrow">{{ displayMonth(today).toUpperCase() }} / {{ today.slice(0, 4) }}</p><h1>Hey, {{ displayName }}.</h1></div>
         <section class="training-action" aria-label="Log training">
-          <button class="log-button" :disabled="locked" :aria-label="pending ? 'Retry unconfirmed session' : 'Log a training session'" :title="pending ? 'Retry unconfirmed session' : 'Log a training session'" @click="training.log()">
+          <button class="log-button" :disabled="locked" :aria-label="pending ? 'Retry unconfirmed session' : 'Log a training session'" :title="pending ? 'Retry unconfirmed session' : 'Log a training session'" @click="logSession()">
             <LoaderCircle v-if="busy" class="spin" :size="66" :stroke-width="2" />
             <RefreshCw v-else-if="pending" :size="66" :stroke-width="2" />
             <Plus v-else :size="96" :stroke-width="2.7" />
@@ -127,6 +136,7 @@ async function deleteEntry(id: string, date: string) {
           <button class="secondary" :disabled="authBusy || !name.trim() || name.trim() === displayName"><Check :size="18" /> Save name</button>
         </form>
         <p v-if="user" class="muted account-email">{{ user.email }}</p>
+        <label class="sound-setting"><span>Session sound</span><input type="checkbox" :checked="soundEnabled" @change="setSoundEnabled(($event.target as HTMLInputElement).checked)" /></label>
         <p v-if="authError" class="feedback error" role="alert">{{ authError }}</p>
         <button class="secondary signout" :disabled="authBusy || busy || !!pending" @click="signOut"><LogOut :size="18" /> {{ preview ? 'Exit preview' : 'Sign out' }}</button>
       </template>
@@ -135,7 +145,7 @@ async function deleteEntry(id: string, date: string) {
         <p v-if="!online" class="feedback muted"><WifiOff :size="16" /> Offline. Logging needs a connection.</p>
         <p v-if="message" class="feedback success"><Check :size="16" /> {{ message }}</p>
         <p v-if="error" class="feedback error" role="alert">{{ error }}</p>
-        <button v-if="pending" class="secondary" :disabled="locked" @click="training.log()"><RefreshCw :size="16" /> Retry unconfirmed save</button>
+        <button v-if="pending" class="secondary" :disabled="locked" @click="logSession()"><RefreshCw :size="16" /> Retry unconfirmed save</button>
         <button v-else-if="error" class="secondary" :disabled="loading || busy || !online" @click="training.refresh()"><RefreshCw :size="16" /> Refresh</button>
       </div>
       <nav class="bottom-nav" aria-label="Main navigation">

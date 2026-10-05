@@ -5,5 +5,5 @@
 - Keep privileged keys and admin utilities out of the frontend bundle.
 - Database grants and RLS enforce ownership; display names never confer permissions.
 - Calendar dates and monthly totals use Europe/Berlin.
-- No offline writes, team dashboard, sound effects or custom action artwork in the MVP.
+- No offline writes, team dashboard or custom action artwork. Session sound plays only after confirmed saves and can be disabled.
 - Validate changes with npm test and npm run build.

@@ -77,6 +77,7 @@ export function useTrainingSessions(identity: Ref<string>, repository: () => Ses
       persistPending(null)
       pending.value = null
       message.value = 'Session logged.'
+      return true
     } catch (failure) {
       if (current === generation) {
         const code = (failure as { code?: string })?.code

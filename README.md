@@ -4,6 +4,8 @@ A private training log built with Vue 3, TypeScript and Vite. GitHub Pages serve
 
 Accounts use an email identifier and a personally delivered password. There is no self-signup, invitation email, OTP, email recovery or password-change UI. The organizer provisions and recovers accounts. Data is private between ordinary accounts, not from the Supabase project administrator.
 
+Confirmed session saves play `public/session-logged.mp3` using Web Audio, unlocked by the logging gesture. **Account > Session sound** controls playback and remembers the preference on this device. Audio is enabled by default; browser/device restrictions can still silence it. Failed audio never blocks logging. The MP3 is included in the PWA asset cache, not in Supabase; replacing it requires a new build/deployment.
+
 ## Local Setup
 
 1. Install Node **22.12 or newer** and npm. From the repository root run `npm ci` (the committed lockfile is required).

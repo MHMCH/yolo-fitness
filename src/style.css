@@ -75,6 +75,8 @@ input { color: var(--text); background: var(--surface); border: 1px solid #37394
 .empty { padding: 30px 0; font-size: 13px; }
 .load-more { margin: 22px auto; display: flex; }
 .account-form { margin-bottom: 25px; }.account-email { overflow-wrap: anywhere; font-size: 13px; }.signout { margin-top: 20px; }
+.sound-setting { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 24px; padding: 16px 0; border-top: 1px solid var(--line); color: var(--text); }
+.sound-setting input { width: 22px; height: 22px; min-height: 0; accent-color: var(--pink); cursor: pointer; }
 .update-bar { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 12px; font-size: 12px; }
 .spin { animation: spin 1s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }

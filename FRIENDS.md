@@ -13,6 +13,7 @@ Install before signing in: the installed app and a browser tab can have separate
 ## Log Training
 
 - Tap the large **plus** to log one session for **today**. Wait for the saved confirmation before logging another. Multiple sessions on the same day are allowed.
+- A short sound plays after a confirmed save when your browser permits audio. Turn **Session sound** off in **Account** for quiet logging; the setting is remembered on this device. The visible saved confirmation remains authoritative.
 - Your counters show **your own** sessions this month and total sessions. All calendar dates/months use **Europe/Berlin**, even while traveling.
 - Open **Session history** to review entries. **Add a past session** accepts a date only; future dates are not allowed. Delete an entry with the bin button and confirm only if you want it removed permanently.
 - Logging and refreshing need an internet connection. An installed app can open offline, but it does not queue saves.
