@@ -1,0 +1,12 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "yolo-fitness dev",
+			"type": "shell",
+			"command": "npm run dev -- --port 5173 --strictPort",
+			"isBackground": true,
+			"problemMatcher": []
+		}
+	]
+}
