@@ -1,19 +1,33 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { Plus, History, UserRound, ArrowLeft, ArrowRight, LogOut, Trash2, CalendarPlus, RefreshCw, Check, WifiOff, LoaderCircle, X } from '@lucide/vue'
+import { Plus, History, UserRound, ArrowLeft, ArrowRight, LogOut, Trash2, CalendarPlus, RefreshCw, Check, WifiOff, LoaderCircle, X, Trophy, Medal, TrendingUp, TrendingDown, Minus } from '@lucide/vue'
 import { useRegisterSW } from 'virtual:pwa-register/vue'
 import { useAuth } from './composables/useAuth'
 import { useTrainingSessions } from './composables/useTrainingSessions'
 import { useSessionSound } from './composables/useSessionSound'
+import { useBoards } from './composables/useBoards'
 import { configured } from './lib/supabase'
 import { sessionRepository, type SessionRepository } from './lib/sessionRepository'
-import { displayDate, displayMonth } from './lib/trainingDates'
+import { boardRepository, type BoardRepository } from './lib/boardRepository'
+import { league, type LeagueConfig } from './config/league'
+import { quarterLabel } from './lib/league'
+import { daysUntilMonthEnd, displayDate, displayMonth } from './lib/trainingDates'
 
 const { user, loading: authLoading, busy: authBusy, error: authError, preview, displayName, identity, signIn, setName, signOut } = useAuth()
-let demoRepository: SessionRepository | null = null
+let demoRepository: (SessionRepository & BoardRepository) | null = null
+let demoConfig: LeagueConfig = {}
 const training = useTrainingSessions(identity, () => preview.value ? demoRepository! : sessionRepository)
 const { summary, history, more, loading, busy, online, message, error, pending, today } = training
-const view = ref<'home' | 'history' | 'account'>('home')
+const { quarter, leaderboard, table: leagueTable, winners, loaded: boardsLoaded, loading: boardsLoading, error: boardsError, refresh: refreshBoards, teamName } =
+  useBoards(identity, () => preview.value ? demoRepository! : boardRepository, () => preview.value ? demoConfig : league, () => today.value)
+const view = ref<'home' | 'history' | 'boards' | 'account'>('home')
+const boardTab = ref<'leaderboard' | 'league'>('leaderboard')
+const places = ['', 'First place', 'Second place', 'Third place']
+const medalClass = (rank: number) => ['', 'gold', 'silver', 'bronze'][rank]
+const bonusCountdown = computed(() => {
+  const days = daysUntilMonthEnd(today.value)
+  return days === 1 ? 'tonight at 23:59' : days === 2 ? 'tomorrow at 23:59' : `in ${days - 1} days`
+})
 const email = ref('')
 const password = ref('')
 const name = ref('')
@@ -24,7 +38,8 @@ const iconUrl = `${import.meta.env.BASE_URL}favicon.png`
 const locked = computed(() => busy.value || loading.value || !online.value || !summary.value)
 const { needRefresh, updateServiceWorker } = useRegisterSW()
 const { enabled: soundEnabled, prepare: prepareSound, play: playSound, setEnabled: setSoundEnabled } = useSessionSound()
-watch(identity, () => { view.value = 'home'; name.value = ''; pastDate.value = ''; adding.value = false })
+watch(identity, () => { view.value = 'home'; boardTab.value = 'leaderboard'; name.value = ''; pastDate.value = ''; adding.value = false })
+watch(view, (value) => { if (value === 'boards' && online.value) void refreshBoards() })
 watch(displayName, (value) => { name.value = value }, { immediate: true })
 async function submitSignIn() {
   const secret = password.value
@@ -33,8 +48,9 @@ async function submitSignIn() {
 }
 async function startPreview() {
   if (!import.meta.env.DEV) return
-  const { createDemoRepository } = await import('./lib/demoRepository')
+  const { createDemoRepository, demoLeague } = await import('./lib/demoRepository')
   demoRepository = createDemoRepository()
+  demoConfig = demoLeague()
   preview.value = true
 }
 async function addPast() {
@@ -129,6 +145,48 @@ async function deleteEntry(id: string, date: string) {
         <button v-if="more" class="secondary load-more" :disabled="loading || busy" @click="training.loadMore()">Load more <ArrowRight :size="16" /></button>
       </template>
 
+      <template v-else-if="view === 'boards'">
+        <div class="view-heading"><div><p class="eyebrow">{{ boardTab === 'leaderboard' ? 'ALL-TIME POINTS' : `${quarterLabel(quarter).toUpperCase()} / ${displayMonth(today).toUpperCase()}` }}</p><h1>{{ boardTab === 'leaderboard' ? 'Leaderboard.' : 'League.' }}</h1></div><button class="icon-button" title="Refresh boards" aria-label="Refresh boards" :disabled="boardsLoading || !online" @click="refreshBoards()"><RefreshCw :size="20" :class="{ spin: boardsLoading }" /></button></div>
+        <div class="segmented" role="tablist" aria-label="Board">
+          <button role="tab" :class="{ selected: boardTab === 'leaderboard' }" :aria-selected="boardTab === 'leaderboard'" @click="boardTab = 'leaderboard'">Leaderboard</button>
+          <button role="tab" :class="{ selected: boardTab === 'league' }" :aria-selected="boardTab === 'league'" @click="boardTab = 'league'">League</button>
+        </div>
+        <div v-if="boardsLoading && !boardsLoaded" class="boards-loading"><LoaderCircle class="spin" aria-label="Loading boards" /></div>
+        <template v-else-if="boardTab === 'leaderboard'">
+          <ol class="board-list">
+            <li v-for="row in leaderboard" :key="row.user_id" :class="{ own: row.user_id === identity }">
+              <span class="board-rank"><Medal v-if="row.rank <= 3" :size="20" :class="medalClass(row.rank)" role="img" :aria-label="places[row.rank]" /><template v-else>{{ row.rank }}</template></span>
+              <span class="board-name">{{ row.display_name }}</span>
+              <span class="board-points">{{ row.total_points }}</span>
+              <span class="board-move" :class="{ up: row.movement > 0, down: row.movement < 0 }" :title="row.movement ? `${Math.abs(row.movement)} ${row.movement > 0 ? 'up' : 'down'} since yesterday` : 'No change since yesterday'">
+                <TrendingUp v-if="row.movement > 0" :size="16" /><TrendingDown v-else-if="row.movement < 0" :size="16" /><Minus v-else :size="16" />
+              </span>
+            </li>
+          </ol>
+          <p v-if="boardsLoaded && !leaderboard.length" class="empty muted">No participants yet.</p>
+        </template>
+        <template v-else>
+          <section v-if="winners.length" class="champions" aria-label="Quarter champions">
+            <p class="eyebrow">QUARTER CHAMPIONS</p>
+            <ul><li v-for="winner in winners" :key="winner.key"><Trophy :size="16" class="gold" /><span class="muted">{{ quarterLabel(winner.key) }}</span><span>{{ winner.teams.map(teamName).join(' / ') }}</span></li></ul>
+          </section>
+          <table v-if="leagueTable.length" class="league-table">
+            <thead><tr><th scope="col">Team</th><th scope="col" class="num" title="Team average this month">Month</th><th scope="col" class="num" title="Monthly averages plus bonus points this quarter">Quarter</th><th scope="col" title="Top 3 places in finished months">Wins</th></tr></thead>
+            <tbody>
+              <tr v-for="(row, index) in leagueTable" :key="row.team.join()" :class="{ own: row.team.includes(identity), 'bonus-cut': row.monthBonus && leagueTable[index + 1] && !leagueTable[index + 1].monthBonus }">
+                <td>{{ teamName(row.team) }}</td>
+                <td class="num">{{ row.monthAverage.toFixed(1) }}<span class="bonus-chip" :class="medalClass(row.monthRank)" :title="row.monthBonus ? `Currently ${places[row.monthRank].toLowerCase()}: +${row.monthBonus} at month end` : undefined">{{ row.monthBonus ? `+${row.monthBonus}` : '' }}</span></td>
+                <td class="num">{{ row.quarterTotal.toFixed(1) }}</td>
+                <td><span class="medals"><Medal v-for="(rank, index) in row.medals" :key="index" :size="16" :class="medalClass(rank)" role="img" :aria-label="places[rank]" /></span></td>
+              </tr>
+            </tbody>
+          </table>
+          <p v-if="leagueTable.length" class="bonus-legend muted"><span class="gold">1st +3</span> · <span class="silver">2nd +2</span> · <span class="bronze">3rd +1</span> · awarded {{ bonusCountdown }}</p>
+          <p v-else-if="boardsLoaded" class="empty muted">No teams set for this quarter.</p>
+        </template>
+        <p v-if="boardsError" class="feedback error board-error" role="alert">{{ boardsError }}</p>
+      </template>
+
       <template v-else>
         <p class="eyebrow">YOUR ACCOUNT</p><h1>Hey, {{ displayName }}.</h1>
         <form v-if="!preview" class="auth-form account-form" @submit.prevent="setName(name)">
@@ -150,7 +208,7 @@ async function deleteEntry(id: string, date: string) {
       </div>
       <nav class="bottom-nav" aria-label="Main navigation">
         <button v-if="view !== 'home'" class="nav-button" @click="view = 'home'"><ArrowLeft :size="18" /> Back</button><span v-else class="nav-identity">{{ displayName }}</span>
-        <div class="nav-actions"><button class="icon-button" :class="{ selected: view === 'history' }" title="Session history" aria-label="Session history" :aria-current="view === 'history' ? 'page' : undefined" @click="view = 'history'"><History :size="21" /></button><button class="icon-button" :class="{ selected: view === 'account' }" title="Account" aria-label="Account" :aria-current="view === 'account' ? 'page' : undefined" @click="view = 'account'"><UserRound :size="21" /></button></div>
+        <div class="nav-actions"><button class="icon-button" :class="{ selected: view === 'boards' }" title="Leaderboard and league" aria-label="Leaderboard and league" :aria-current="view === 'boards' ? 'page' : undefined" @click="view = 'boards'"><Trophy :size="21" /></button><button class="icon-button" :class="{ selected: view === 'history' }" title="Session history" aria-label="Session history" :aria-current="view === 'history' ? 'page' : undefined" @click="view = 'history'"><History :size="21" /></button><button class="icon-button" :class="{ selected: view === 'account' }" title="Account" aria-label="Account" :aria-current="view === 'account' ? 'page' : undefined" @click="view = 'account'"><UserRound :size="21" /></button></div>
       </nav>
     </main>
     <aside v-if="needRefresh" class="update-bar"><span>Update available.</span><button class="secondary" :disabled="busy || !!pending || authBusy" @click="updateServiceWorker(true)"><RefreshCw :size="16" /> Update</button><button class="icon-button" title="Dismiss update" aria-label="Dismiss update" @click="needRefresh = false"><X :size="18" /></button></aside>
