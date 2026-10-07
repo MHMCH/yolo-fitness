@@ -82,6 +82,8 @@ async function registerTestTap() {
     message.value = reset ? 'Test mode off. The new features are hidden again.' : 'Test mode off, but the unlock could not be reset. Check your connection and switch it off again.'
   }
 }
+// The save buttons stay disabled until the field differs from what is stored.
+const lastYearChanged = computed(() => String(lastYearInput.value ?? '').trim() !== (lastYearCount.value === null ? '' : String(lastYearCount.value)))
 async function saveLastYear() {
   if (await setLastYearCount(lastYearInput.value)) message.value = lastYearCount.value === null ? 'Last year\'s sessions cleared.' : 'Last year\'s sessions saved.'
 }
@@ -205,7 +207,7 @@ async function deleteEntry(id: string, date: string) {
         <form v-if="featuresVisible" class="auth-form account-form" @submit.prevent="saveLastYear">
           <label for="last-year">Last year's sessions</label>
           <input id="last-year" v-model="lastYearInput" type="number" inputmode="numeric" min="0" max="10000" step="1" placeholder="Optional" />
-          <button class="secondary" :disabled="authBusy"><Check :size="18" /> Save</button>
+          <button class="secondary" :disabled="authBusy || !lastYearChanged"><Check :size="18" /> Save last year</button>
         </form>
         <p v-if="user" class="muted account-email">{{ user.email }}</p>
         <label class="sound-setting"><span>Session sound</span><input type="checkbox" :checked="soundEnabled" @change="setSoundEnabled(($event.target as HTMLInputElement).checked)" /></label>
