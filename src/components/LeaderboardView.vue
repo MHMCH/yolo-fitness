@@ -3,7 +3,8 @@ import { computed, ref } from 'vue'
 import { Copy, LoaderCircle, Medal, Minus, RefreshCw, TrendingDown, TrendingUp } from '@lucide/vue'
 import LineChart from './LineChart.vue'
 import { useClipboard } from '../composables/useClipboard'
-import { leaderboardText, type LeaderboardRow } from '../lib/league'
+import { leaderboardChat } from '../lib/chatText'
+import type { LeaderboardRow } from '../lib/league'
 import { AHEAD_COLOR, BEHIND_COLOR, buildRankingSeries, MUTED_COLOR, PICKED_COLOR } from '../lib/ranking'
 import { addDays, diffDays, monthTicks, seasonLength, weekTicks, type RefLine, type Season } from '../lib/seasonChart'
 import { displayDate } from '../lib/trainingDates'
@@ -41,7 +42,7 @@ const canCopy = computed(() => props.loaded && !props.loading && !props.error &&
   <div class="view-heading board-heading">
     <div><p class="eyebrow">{{ season.name.toUpperCase() }}</p><h1>Leaderboard.</h1></div>
     <div class="board-actions">
-      <button class="icon-button" title="Copy leaderboard" aria-label="Copy leaderboard" :disabled="!canCopy" @click="copy(leaderboardText(rows), 'Leaderboard')">
+      <button class="icon-button" title="Copy leaderboard" aria-label="Copy leaderboard" :disabled="!canCopy" @click="copy(leaderboardChat(rows, season.name, today), 'Leaderboard')">
         <LoaderCircle v-if="copying" class="spin" :size="20" /><Copy v-else :size="20" />
       </button>
       <button class="icon-button" title="Refresh" aria-label="Refresh" :disabled="loading" @click="$emit('refresh')"><RefreshCw :size="20" :class="{ spin: loading }" /></button>

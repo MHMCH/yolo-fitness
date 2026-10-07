@@ -4,7 +4,8 @@ import { Check, Copy, LoaderCircle, Medal, RefreshCw, Trophy } from '@lucide/vue
 import LineChart from './LineChart.vue'
 import { useClipboard } from '../composables/useClipboard'
 import type { AppConfig } from '../config'
-import { leagueText, quarterLabel, quarterTable, quarterWinners, type LeagueRow } from '../lib/league'
+import { monthChat, shortDate, totalChat } from '../lib/chatText'
+import { quarterLabel, quarterTable, quarterWinners } from '../lib/league'
 import { addDays } from '../lib/seasonChart'
 import { buildTeamSeries, dayTicks, defaultSelection, formatScore, monthLabel, monthRange, monthRows, ordinal, quarterKeys, teamColor, totalRows } from '../lib/teams'
 import { daysUntilMonthEnd, displayDate } from '../lib/trainingDates'
@@ -57,13 +58,14 @@ const segments = (row: (typeof totals.value)[number]) => row.months
   .filter((segment) => segment.value > 0)
 const monthOrder = computed(() => key.value ? [0, 1, 2].map((index) => monthLabel(key.value, index)).join(' · ') : '')
 const hasTeams = computed(() => keys.value.length > 0)
-const canCopy = computed(() => props.loaded && !props.loading && !props.error && !copying.value && rows.value.length + totals.value.length > 0)
+const canCopy = computed(() => props.loaded && !props.loading && !props.error && !copying.value
+  && (month.value === 'total' ? totals.value.length > 0 : started.value))
 function copyLeague() {
-  const asLeagueRows: LeagueRow[] = rows.value.map((row) => ({
-    team: row.team, monthAverage: row.average, monthRank: row.rank, monthBonus: row.bonus,
-    quarterTotal: totals.value.find((total) => total.slot === row.slot)?.total ?? 0, medals: medalsOf(row.team),
-  }))
-  void copy(leagueText(asLeagueRows, props.teamName), 'League')
+  if (!key.value || !canCopy.value) return
+  if (month.value === 'total') { void copy(totalChat(totals.value, quarterLabel(key.value), props.teamName), 'League'); return }
+  const heading = `${quarterLabel(key.value)} · ${monthLabel(key.value, month.value)}`
+  const status = closed.value ? 'closed' : `running, ends ${shortDate(addDays(range.value!.hi, -1))}`
+  void copy(monthChat(rows.value, heading, status, props.teamName), 'League')
 }
 </script>
 
@@ -71,7 +73,7 @@ function copyLeague() {
   <div class="view-heading board-heading">
     <div><p class="eyebrow">{{ key ? quarterLabel(key).toUpperCase() : 'SEASON' }}</p><h1>League.</h1></div>
     <div class="board-actions">
-      <button v-if="month !== 'total'" class="icon-button" title="Copy league" aria-label="Copy league" :disabled="!canCopy" @click="copyLeague">
+      <button class="icon-button" title="Copy league" aria-label="Copy league" :disabled="!canCopy" @click="copyLeague">
         <LoaderCircle v-if="copying" class="spin" :size="20" /><Copy v-else :size="20" />
       </button>
       <button class="icon-button" title="Refresh" aria-label="Refresh" :disabled="loading" @click="$emit('refresh')"><RefreshCw :size="20" :class="{ spin: loading }" /></button>

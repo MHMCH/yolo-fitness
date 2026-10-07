@@ -10,26 +10,6 @@ export type LeaderboardRow = LeaderboardEntry & { rank: number; movement: number
 export type LeagueRow = { team: string[]; monthAverage: number; monthRank: number; monthBonus: number; quarterTotal: number; medals: number[] }
 export type QuarterWinner = { key: string; teams: string[][] }
 
-function textTable(headers: string[], rows: string[][]): string {
-  const line = (cells: string[]) => `| ${cells.map((cell) => cell.replace(/\\/g, '\\\\').replace(/\|/g, '\\|').replace(/[\r\n]+/g, ' ')).join(' | ')} |`
-  return [line(headers), line(headers.map(() => '---')), ...rows.map(line)].join('\n')
-}
-
-export function leaderboardText(rows: LeaderboardRow[]): string {
-  return textTable(['Rank', 'Name', 'Points', 'Position change'], rows.map((row) => [
-    String(row.rank), row.display_name, String(row.total_points),
-    row.movement > 0 ? `${row.movement} up` : row.movement < 0 ? `${Math.abs(row.movement)} down` : 'Unchanged',
-  ]))
-}
-
-export function leagueText(rows: LeagueRow[], teamName: (team: string[]) => string): string {
-  const medals = ['', 'Gold', 'Silver', 'Bronze']
-  return textTable(['Team', 'Month', 'Quarter', 'Wins'], rows.map((row) => [
-    teamName(row.team), `${row.monthAverage.toFixed(1)}${row.monthBonus ? ` +${row.monthBonus}` : ''}`,
-    row.quarterTotal.toFixed(1), row.medals.map((rank) => medals[rank]).join(', '),
-  ]))
-}
-
 export function rankWithTies(values: number[]): number[] {
   return values.map((value) => 1 + values.filter((other) => other > value).length)
 }

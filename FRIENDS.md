@@ -27,7 +27,7 @@ Install before signing in: the installed app and a browser tab can have separate
 - **Leaderboard** ranks everyone by sessions this season. The top three get a gold, silver or bronze medal and tied people share a place. Arrows show who moved up or down since yesterday. The chart shows all lines; you and the people directly above and below you are in colour, everyone else is grey. Tap a name to highlight that person.
 - **League** is the team competition per quarter. Pick a quarter and a month, or **Total** for the quarter. A team's score is its members' sessions divided by its number of members. While a month runs, a chip shows the bonus a team would get if the month ended now (+3, +2, +1); the bonuses are awarded when the month closes at 23:59 on its last day. Tied teams share the place, and a team without sessions gets no bonus. **Total** adds up the quarter (closed months with bonus, the running month without) and shows small medals for the months in which a team finished in the top three. The champions of finished quarters are listed above the table.
 - Your own team is shown in a card and in bold, but not always on top.
-- The copy button puts the visible table on your clipboard as text, ready to paste into WhatsApp.
+- The copy button puts the visible standings on your clipboard as chat-style text with medals and arrows, ready to paste into WhatsApp. It looks the same for everybody; nobody is highlighted.
 - Everyone can see names, season totals, team scores and per-day totals. Nobody can see another person's individual session list.
 - Teams are fixed by the organizer for each quarter.
 
