@@ -6,6 +6,9 @@ export type Rival = { id: string; role: 'chase' | 'defend'; color: string }
 
 const CHASE = ['#ffb454', '#ffd596']
 const DEFEND = ['#5ac8fa', '#a2dcf5']
+/** Colour of the person just ahead of you, and of the person just behind you. */
+export const AHEAD_COLOR = CHASE[0]
+export const BEHIND_COLOR = DEFEND[0]
 export const MUTED_COLOR = '#8a8c96'
 export const PICKED_COLOR = '#c8a2ff'
 

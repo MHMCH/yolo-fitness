@@ -4,7 +4,7 @@ import { Copy, LoaderCircle, Medal, Minus, RefreshCw, TrendingDown, TrendingUp }
 import LineChart from './LineChart.vue'
 import { useClipboard } from '../composables/useClipboard'
 import { leaderboardText, type LeaderboardRow } from '../lib/league'
-import { buildRankingSeries, MUTED_COLOR, PICKED_COLOR } from '../lib/ranking'
+import { AHEAD_COLOR, BEHIND_COLOR, buildRankingSeries, MUTED_COLOR, PICKED_COLOR } from '../lib/ranking'
 import { addDays, diffDays, monthTicks, seasonLength, type RefLine, type Season } from '../lib/seasonChart'
 import { displayDate } from '../lib/trainingDates'
 import type { DailyPoints } from '../types/database'
@@ -71,7 +71,12 @@ const canCopy = computed(() => props.loaded && !props.loading && !props.error &&
       </li>
     </ol>
     <p v-if="!rows.length" class="empty muted">No participants yet.</p>
-    <p class="muted small rank-hint">Tap a name to highlight their line. Arrows compare with yesterday.</p>
+    <p class="muted small rank-hint legend">
+      <span class="legend-item"><span class="legend-dot" style="background: var(--pink)"></span>You</span>
+      <span class="legend-item"><span class="legend-dot" :style="{ background: AHEAD_COLOR }"></span>The person just ahead of you</span>
+      <span class="legend-item"><span class="legend-dot" :style="{ background: BEHIND_COLOR }"></span>The person just behind you</span>
+    </p>
+    <p class="muted small rank-hint">Everyone else is a grey line. If you lead or are last, the two nearest people on the other side are coloured. Tap a name to highlight their line. Arrows compare with yesterday.</p>
   </template>
   <p v-if="error" class="feedback error board-error" role="alert">{{ error }}</p>
   <button v-if="error" class="secondary" :disabled="loading" @click="$emit('refresh')"><RefreshCw :size="16" /> Try again</button>
