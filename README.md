@@ -36,7 +36,7 @@ npm run preview
 ## Supabase Project
 
 1. Create a Supabase project, choosing a nearby **Europe region** for your users. Store its database password securely. Region selection does not define the calendar timezone: the database uses **Europe/Berlin**, including daylight saving time.
-2. In the project's SQL Editor, execute the complete contents of `supabase/migrations/202610040001_training.sql`, then `supabase/migrations/202610060001_leaderboard.sql`. Apply this to a new project before using the frontend. Keep the migration in version control; use subsequent migrations for later schema changes rather than blindly rerunning it on an existing database.
+2. In the project's SQL Editor, execute the complete contents of `supabase/migrations/202610040001_training.sql`. Apply this to a new project before using the frontend. Keep the migration in version control; use subsequent migrations for later schema changes rather than blindly rerunning it on an existing database.
 3. Obtain the project URL and **publishable** API key from the project's connection/API settings (dashboard labels may vary). Use them in the public environment variables above. A legacy `anon` key is also public; neither public key replaces grants and RLS.
 4. In Authentication's sign-in/provider settings, keep **email/password enabled**. Disable **Allow new users to sign up**, anonymous sign-in and unused providers. Keep email confirmation enabled; personally provisioned users are individually confirmed by the administrator.
 5. Leave **custom SMTP unset**. Do not use Invite, forgot-password email, OTP or resend confirmation as part of this workflow. Auto-confirm means administrator attestation, not proof of mailbox ownership. Supabase's unrelated public Auth endpoints may still attempt email using its own defaults; this app does not call those flows, and SMTP-unset is not a blanket promise that hosted Auth can never send mail.
@@ -47,19 +47,6 @@ The migration defines `training_sessions` with UUID `id`, owner `user_id`, date-
 The **security-invoker** function `training_summary` returns `today`, `month_count` and `total_count` with the caller's permissions. RLS applies inside the function just as it does to direct queries, so each person counts only their own rows. Do not change it to security-definer. Today's date, allowed backdating and month boundaries use database Europe/Berlin dates; future dates are forbidden. Multiple sessions on one date are allowed. Counts are derived from rows, not writable counters. Display names confer no permissions.
 
 For CLI-based local database verification, install the Supabase CLI and Docker, then use `supabase start`, `supabase db reset` and `supabase test db` with the supplied config, migration and `supabase/tests/training.test.sql`. These are separate from `npm test`; do not treat frontend unit-test success as database/RLS verification.
-
-## Leaderboard And League
-
-`202610060001_leaderboard.sql` is additive: it only creates two **security-definer** functions and does not alter `training_sessions`, its grants or RLS. Executable only by `authenticated` (revoked from `public` and `anon`), they return aggregates, never individual rows:
-
-- `leaderboard()`: per non-banned account its `user_id`, `display_name` (max 40 chars), all-time `total_points` and `points_before_today` for rank movement.
-- `monthly_points(from_date, to_date)`: points per account and Berlin month for a range of at most 366 days.
-
-All signed-in members therefore see every member's display name, UUID and point totals. One session is one point; standings are calculated in the frontend on every load, so backdated sessions also change closed months.
-
-Teams live in `src/config/league.ts`, keyed by quarter (`2026-Q4`) and listed by **account UUID** (as printed by `npm run users`). This file ships in the public bundle: never use emails there. Edit it and redeploy to set the next quarter's teams. A team's monthly score is its points divided by its configured member count; after each Berlin month the top three teams add 3/2/1 bonus points to that average (ties share the higher bonus and skip the next place; teams with 0 points get no bonus). The quarter winner has the highest sum of monthly averages plus bonuses.
-
-Apply the migration **before** deploying the frontend that uses it. Older clients are unaffected; a new client against an old database only shows a board error.
 
 ## Provision Accounts
 

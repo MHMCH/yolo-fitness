@@ -5,6 +5,5 @@
 - Keep privileged keys and admin utilities out of the frontend bundle.
 - Database grants and RLS enforce ownership; display names never confer permissions.
 - Calendar dates and monthly totals use Europe/Berlin.
-- No offline writes or custom action artwork. Session sound plays only after confirmed saves and can be disabled.
-- Leaderboard/league view is allowed: it reads only aggregate points and display names via security-definer RPCs; individual sessions stay owner-only. Teams are listed by account UUID in src/config/league.ts.
+- No offline writes, team dashboard or custom action artwork. Session sound plays only after confirmed saves and can be disabled.
 - Validate changes with npm test and npm run build.
