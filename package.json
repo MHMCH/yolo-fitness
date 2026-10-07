@@ -12,6 +12,7 @@
     "typecheck": "vue-tsc --noEmit",
     "build": "npm run typecheck && vite build",
     "preview": "vite preview --host 127.0.0.1",
+    "preview:lan": "vite preview --host 0.0.0.0",
     "test": "vitest run",
     "icons": "node scripts/generate-icons.mjs",
     "users": "node scripts/manage-users.mjs"
