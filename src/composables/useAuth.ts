@@ -2,6 +2,8 @@ import { computed, onScopeDispose, ref } from 'vue'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 
+const MAX_LAST_YEAR = 10000
+
 /**
  * Account state. The display name, last year's session count and the unlock flag live in the account's
  * user metadata, which the signed-in user may edit; nothing here grants permissions.
@@ -55,26 +57,33 @@ export function useAuth() {
       error.value = 'Could not sign in. Check your credentials and connection, or contact the organizer.'
     } finally { busy.value = false }
   }
-  async function setName(name: string) {
+  /** Returns true when the name was saved. */
+  async function setName(name: string): Promise<boolean> {
     const trimmed = name.trim().slice(0, 40)
-    if (busy.value || !trimmed) return
-    if (preview.value) { previewName.value = trimmed; return }
-    if (!supabase || !user.value) return
+    if (busy.value || !trimmed) return false
+    if (preview.value) { previewName.value = trimmed; return true }
+    if (!supabase || !user.value) return false
     busy.value = true
     error.value = ''
-    try { await updateMetadata({ display_name: trimmed }) }
-    catch { error.value = 'Could not save your name. Please try again.' }
+    try { await updateMetadata({ display_name: trimmed }); return true }
+    catch { error.value = 'Could not save your name. Please try again.'; return false }
     finally { busy.value = false }
   }
-  async function setLastYearCount(count: number | null) {
-    if (busy.value) return
-    if (count !== null && (!Number.isInteger(count) || count < 0)) { error.value = 'Enter a whole number, 0 or more.'; return }
-    if (preview.value) { previewLastYear.value = count; return }
-    if (!supabase || !user.value) return
-    busy.value = true
+  /**
+   * Saves last year's session count. `input` is whatever the field holds: a number (a number input hands
+   * its value over as one), a string, or empty to clear it. Returns true when it was saved.
+   */
+  async function setLastYearCount(input: unknown): Promise<boolean> {
+    if (busy.value) return false
+    const text = String(input ?? '').trim()
+    const count = text === '' ? null : Number(text)
+    if (count !== null && (!Number.isInteger(count) || count < 0 || count > MAX_LAST_YEAR)) { error.value = `Enter a whole number from 0 to ${MAX_LAST_YEAR}.`; return false }
     error.value = ''
-    try { await updateMetadata({ last_year_count: count }) }
-    catch { error.value = 'Could not save last year\'s sessions. Please try again.' }
+    if (preview.value) { previewLastYear.value = count; return true }
+    if (!supabase || !user.value) return false
+    busy.value = true
+    try { await updateMetadata({ last_year_count: count }); return true }
+    catch { error.value = 'Could not save last year\'s sessions. Please try again.'; return false }
     finally { busy.value = false }
   }
   /** Remember that this account has seen the unlock celebration; failures keep it unlocked on this device only. */

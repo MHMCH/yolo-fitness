@@ -83,8 +83,10 @@ async function registerTestTap() {
   }
 }
 async function saveLastYear() {
-  const text = lastYearInput.value.trim()
-  await setLastYearCount(text === '' ? null : Number(text))
+  if (await setLastYearCount(lastYearInput.value)) message.value = lastYearCount.value === null ? 'Last year\'s sessions cleared.' : 'Last year\'s sessions saved.'
+}
+async function saveName() {
+  if (await setName(name.value)) message.value = 'Name saved.'
 }
 async function addPast() {
   if (!pastDate.value) return
@@ -196,13 +198,13 @@ async function deleteEntry(id: string, date: string) {
 
       <template v-else>
         <p class="eyebrow">YOUR ACCOUNT</p><h1>Hey, {{ displayName }}.</h1>
-        <form v-if="!preview" class="auth-form account-form" @submit.prevent="setName(name)">
+        <form v-if="!preview" class="auth-form account-form" @submit.prevent="saveName">
           <label for="account-name">Display name</label><input id="account-name" v-model="name" maxlength="40" required />
           <button class="secondary" :disabled="authBusy || !name.trim() || name.trim() === displayName"><Check :size="18" /> Save name</button>
         </form>
         <form v-if="featuresVisible" class="auth-form account-form" @submit.prevent="saveLastYear">
           <label for="last-year">Last year's sessions</label>
-          <input id="last-year" v-model="lastYearInput" type="number" inputmode="numeric" min="0" step="1" placeholder="Optional" />
+          <input id="last-year" v-model="lastYearInput" type="number" inputmode="numeric" min="0" max="10000" step="1" placeholder="Optional" />
           <button class="secondary" :disabled="authBusy"><Check :size="18" /> Save</button>
         </form>
         <p v-if="user" class="muted account-email">{{ user.email }}</p>
