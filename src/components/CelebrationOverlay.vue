@@ -5,7 +5,7 @@ import { burst, rain, starPoints, step, type Particle } from '../lib/confetti'
 const emit = defineEmits<{ close: [] }>()
 const canvas = ref<HTMLCanvasElement | null>(null)
 const button = ref<HTMLButtonElement | null>(null)
-const RAINBOW = ['#ff4d6d', '#ff8a3d', '#ffd23f', '#6fd08c', '#4cc9f0', '#8b7bff']
+const sticker = `${import.meta.env.BASE_URL}yeah-buddy.webp`
 const reduced = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
 
 let frame = 0
@@ -87,11 +87,8 @@ onBeforeUnmount(() => {
         :points="starPoints(star[2]).map(([x, y]) => `${x + star[0]},${y + star[1]}`).join(' ')" :style="{ animationDelay: `${index * 0.35}s` }" />
     </svg>
     <div class="celebration-card">
-      <svg class="rainbow" viewBox="0 0 200 104" aria-hidden="true">
-        <path v-for="(color, index) in RAINBOW" :key="color" :d="`M ${10 + index * 9},100 A ${90 - index * 9},${90 - index * 9} 0 0 1 ${190 - index * 9},100`"
-          pathLength="1" :stroke="color" :style="{ animationDelay: `${0.15 + index * 0.12}s` }" />
-      </svg>
-      <h2 id="celebration-title">Congrats, Buddy!</h2>
+      <img class="sticker" :src="sticker" width="512" height="512" alt="Yeah Buddy" decoding="async" />
+      <h2 id="celebration-title" class="sr-only">Congrats, Buddy!</h2>
       <p>You just earned some new features!</p>
       <ul class="unlocked">
         <li>Season chart</li><li>Leaderboard</li><li>League</li>
