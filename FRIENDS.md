@@ -19,6 +19,15 @@ Install before signing in: the installed app and a browser tab can have separate
 - Logging and refreshing need an internet connection. An installed app can open offline, but it does not queue saves.
 - If a save is unconfirmed, reconnect and use **Retry unconfirmed save**. This retries the same session safely. Do not tap new actions or add another entry to resolve uncertainty; an error is not a saved confirmation.
 
+## Leaderboard And League
+
+Open the **trophy** button. Every logged session is one point. Other members see your display name and point totals, never your individual session dates.
+
+- **Leaderboard** ranks everyone by all-time points. The top three get a medal; arrows show rank changes since yesterday.
+- **League** is a team competition per quarter with fixed teams set by the organizer. A team's score is its members' points divided by its number of members. Each month starts again at zero: when the month ends (23:59, Europe/Berlin) the top three teams get **3, 2 and 1 bonus points** added to their monthly average; tied teams all get the higher bonus, and teams without points get none. The quarter winner has the most averages plus bonus points across the three months.
+- The table lists each team's average for the current month, its quarter total so far and medals for its top-three months. Past quarter champions appear above it.
+- Backdated sessions count for the month of their date, so standings can still change after a month ends.
+
 ## Account Help
 
 Use **Account** to edit your display name or sign out. Password changes and email recovery are not available in the app. For a forgotten password, lost device or suspected compromise, contact the organizer through your usual private channel. They can reset your existing account while keeping its history; no reset email is sent.

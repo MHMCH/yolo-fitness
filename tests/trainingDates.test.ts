@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { berlinDate, monthBounds, validTrainingDate, displayDate } from '../src/lib/trainingDates'
+import { berlinDate, monthBounds, validTrainingDate, displayDate, quarterBounds, isMonthClosed, daysUntilMonthEnd } from '../src/lib/trainingDates'
 
 describe('Berlin training calendar', () => {
   it('crosses midnight and month before UTC', () => {
@@ -21,5 +21,14 @@ describe('Berlin training calendar', () => {
   })
   it('formats date-only entries without local timezone shifts', () => {
     expect(displayDate('2026-10-01')).toBe('1 Oct 2026')
+  })
+  it('derives quarters and closes months at Berlin midnight', () => {
+    expect(quarterBounds('2026-11-15')).toEqual({ key: '2026-Q4', start: '2026-10-01', end: '2027-01-01', months: ['2026-10-01', '2026-11-01', '2026-12-01'] })
+    expect(quarterBounds('2027-03-31').key).toBe('2027-Q1')
+    expect(isMonthClosed('2026-10-01', '2026-10-31')).toBe(false)
+    expect(isMonthClosed('2026-10-01', '2026-11-01')).toBe(true)
+    expect(daysUntilMonthEnd('2026-10-31')).toBe(1)
+    expect(daysUntilMonthEnd('2026-10-06')).toBe(26)
+    expect(daysUntilMonthEnd('2026-12-31')).toBe(1)
   })
 })
