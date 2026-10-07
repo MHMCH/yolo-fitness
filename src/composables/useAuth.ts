@@ -86,6 +86,15 @@ export function useAuth() {
     try { await updateMetadata({ features_unlocked_at: new Date().toISOString() }) }
     catch { if (user.value?.id === id) unlockedLocally.value = true }
   }
+  /** Forget that this account saw the unlock celebration, so it is shown again. Returns false if that could not be saved. */
+  async function relockFeatures(): Promise<boolean> {
+    unlockedLocally.value = false
+    if (preview.value) { previewUnlocked.value = false; return true }
+    if (!supabase || !user.value) return false
+    if (!metadata.value.features_unlocked_at) return true
+    try { await updateMetadata({ features_unlocked_at: null }); return true }
+    catch { return false }
+  }
   function relockPreview() { previewUnlocked.value = false }
   async function signOut() {
     error.value = ''
@@ -100,6 +109,6 @@ export function useAuth() {
   }
   return {
     user, loading, busy, error, preview, displayName, lastYearCount, identity, featuresUnlocked,
-    signIn, setName, setLastYearCount, unlockFeatures, relockPreview, signOut,
+    signIn, setName, setLastYearCount, unlockFeatures, relockFeatures, relockPreview, signOut,
   }
 }

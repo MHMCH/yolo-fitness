@@ -20,7 +20,7 @@ import { appConfig, type AppConfig } from './config'
 import { requireTestMode } from './config/release'
 import { displayDate, displayMonth, monthBounds } from './lib/trainingDates'
 
-const { user, loading: authLoading, busy: authBusy, error: authError, preview, displayName, lastYearCount, identity, featuresUnlocked, signIn, setName, setLastYearCount, unlockFeatures, relockPreview, signOut } = useAuth()
+const { user, loading: authLoading, busy: authBusy, error: authError, preview, displayName, lastYearCount, identity, featuresUnlocked, signIn, setName, setLastYearCount, unlockFeatures, relockFeatures, relockPreview, signOut } = useAuth()
 let demo: { sessions: SessionRepository; season: SeasonRepository; boards: BoardRepository; config: AppConfig } | null = null
 const config = () => preview.value ? demo!.config : appConfig
 const training = useTrainingSessions(identity, () => preview.value ? demo!.sessions : sessionRepository)
@@ -66,7 +66,7 @@ async function startPreview() {
   preview.value = true
 }
 const testFlash = ref(false)
-function registerTestTap() {
+async function registerTestTap() {
   if (!requireTestMode) return
   const state = tapTestMode()
   if (state === null) return
@@ -75,6 +75,12 @@ function registerTestTap() {
   try { navigator.vibrate?.(state ? [60, 80, 60] : 140) } catch { /* not supported */ }
   testFlash.value = true
   window.setTimeout(() => { testFlash.value = false }, 1300)
+  if (!state) {
+    // Switching off also resets this account's unlock, so the celebration can be replayed.
+    celebrating.value = false
+    const reset = await relockFeatures()
+    message.value = reset ? 'Test mode off. The new features are hidden again.' : 'Test mode off, but the unlock could not be reset. Check your connection and switch it off again.'
+  }
 }
 async function saveLastYear() {
   const text = lastYearInput.value.trim()
