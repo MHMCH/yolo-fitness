@@ -21,7 +21,8 @@ button { cursor: pointer; border: 0; }
 button:disabled { cursor: not-allowed; opacity: .45; }
 button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid var(--pink); outline-offset: 5px; }
 a { color: inherit; }
-.app-shell { min-height: 100svh; max-width: 1000px; margin: auto; padding: max(28px, env(safe-area-inset-top)) 36px max(22px, env(safe-area-inset-bottom)); display: flex; flex-direction: column; }
+/* overflow-x: clip keeps the slide-in animation from widening the page (no stray scrollbar); hidden is the fallback. */
+.app-shell { overflow-x: hidden; overflow-x: clip; min-height: 100svh; max-width: 1000px; margin: auto; padding: max(28px, env(safe-area-inset-top)) 36px max(22px, env(safe-area-inset-bottom)); display: flex; flex-direction: column; }
 .topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 36px; }
 .brand { display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 750; text-decoration: none; }
 .brand img { border-radius: 6px; }
