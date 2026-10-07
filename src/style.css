@@ -192,6 +192,16 @@ select { font: inherit; font-size: 13px; color: var(--text); background: var(--s
 .bonus-legend { font-size: 11px; line-height: 1.7; margin: 14px 0 0; }
 .board-error { margin-top: 18px; }
 .copy-feedback:not(:empty) { margin-top: 14px; }
+.toast-region { position: fixed; top: calc(env(safe-area-inset-top, 0px) + 66px); left: 0; right: 0; z-index: 50; display: flex; justify-content: center; padding: 0 16px; pointer-events: none; }
+.toast { pointer-events: auto; display: flex; align-items: center; gap: 10px; max-width: 440px; padding: 10px 14px; font-size: 13px; line-height: 1.45; background: #1b1d22f2; border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 10px 30px #00000066; animation: toast-in .25s ease both; }
+.toast-success { color: var(--green); }
+.toast-error { color: #ffc0cb; border-color: #ffa0b080; }
+.toast-text { min-width: 0; overflow-wrap: anywhere; }
+.toast-action { flex-shrink: 0; padding: 7px 12px; font-size: 12px; font-weight: 700; color: #351225; background: var(--pink); border-radius: 8px; }
+.toast-close { flex-shrink: 0; width: 28px; height: 28px; display: grid; place-items: center; background: transparent; color: var(--muted); border-radius: 6px; }
+.logged-check { animation: check-pop .45s cubic-bezier(.2, 1.6, .4, 1) both; }
+@keyframes toast-in { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
+@keyframes check-pop { from { transform: scale(.4) rotate(-12deg); opacity: 0; } to { transform: none; opacity: 1; } }
 .update-bar { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 12px; font-size: 12px; }
 .spin { animation: spin 1s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }

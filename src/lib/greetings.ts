@@ -13,7 +13,6 @@ const LINES: Record<Slot, string[]> = {
   late: ['Night shift, {n}?', 'Late-night iron, {n}.', 'Last call, {n}?'],
   night: ['Nighthawk mode, {n}.', 'Still up, {n}? Respect.', 'Midnight oil, {n}.'],
 }
-const DONE_LINES = ['Already crushed it, {n}.', 'Logged and loaded, {n}.', "Today's done, {n}. Respect."]
 /** Monday first. */
 const WEEKDAYS = ['MONDAY RESET', 'TUESDAY GRIND', 'MIDWEEK PUSH', 'THURSDAY THUNDER', 'FRIDAY GAINS', 'SATURDAY SESSION', 'SUNDAY RESET']
 const CONFIRMATIONS: Record<Slot, string[]> = {
@@ -26,7 +25,7 @@ const CONFIRMATIONS: Record<Slot, string[]> = {
   night: ['Nighthawk. Session logged.', 'Yeah buddy. Session logged.'],
 }
 
-export const GREETING_TEXT = { LINES, DONE_LINES, WEEKDAYS, CONFIRMATIONS }
+export const GREETING_TEXT = { LINES, WEEKDAYS, CONFIRMATIONS }
 
 export function slotFor(hour: number): Slot {
   if (hour < 5) return 'night'
@@ -62,13 +61,12 @@ function pick<Item>(items: Item[], seed: string): Item {
 
 const shorten = (name: string) => name.length > 16 ? `${name.slice(0, 15)}…` : name
 
-export function greeting(now: Date, name: string, trainedToday: boolean): { eyebrow: string; title: string } {
+export function greeting(now: Date, name: string): { eyebrow: string; title: string } {
   const { date, hour, weekday } = berlinClock(now)
   const slot = slotFor(hour)
-  const lines = trainedToday ? DONE_LINES : LINES[slot]
   return {
     eyebrow: WEEKDAYS[weekday],
-    title: pick(lines, `${date}|${trainedToday ? 'done' : slot}|${name}`).replace('{n}', shorten(name)),
+    title: pick(LINES[slot], `${date}|${slot}|${name}`).replace('{n}', shorten(name)),
   }
 }
 

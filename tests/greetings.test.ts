@@ -24,33 +24,30 @@ describe('Berlin clock', () => {
 describe('greeting', () => {
   const wednesdayMorning = at('2026-10-07T08:30:00Z')   // 10:30 in Berlin
   it('combines the weekday line with a greeting for the time of day', () => {
-    const result = greeting(wednesdayMorning, 'Max', false)
+    const result = greeting(wednesdayMorning, 'Max')
     expect(result.eyebrow).toBe('MIDWEEK PUSH')
     expect(GREETING_TEXT.LINES.morning.map((line) => line.replace('{n}', 'Max'))).toContain(result.title)
   })
   it('is stable within a slot and day', () => {
-    const first = greeting(at('2026-10-07T08:00:00Z'), 'Max', false)
-    expect(greeting(at('2026-10-07T09:55:00Z'), 'Max', false)).toEqual(first)
+    const first = greeting(at('2026-10-07T08:00:00Z'), 'Max')
+    expect(greeting(at('2026-10-07T09:55:00Z'), 'Max')).toEqual(first)
   })
   it('varies over days and slots', () => {
-    const titles = new Set(Array.from({ length: 14 }, (_, day) => greeting(at(`2026-10-${String(day + 1).padStart(2, '0')}T08:30:00Z`), 'Max', false).title))
+    const titles = new Set(Array.from({ length: 14 }, (_, day) => greeting(at(`2026-10-${String(day + 1).padStart(2, '0')}T08:30:00Z`), 'Max').title))
     expect(titles.size).toBeGreaterThan(1)
-    expect(greeting(at('2026-10-07T19:30:00Z'), 'Max', false).title).not.toBe(greeting(wednesdayMorning, 'Max', false).title)
-  })
-  it('switches to a done-for-today line after a session', () => {
-    expect(GREETING_TEXT.DONE_LINES.map((line) => line.replace('{n}', 'Max'))).toContain(greeting(wednesdayMorning, 'Max', true).title)
+    expect(greeting(at('2026-10-07T19:30:00Z'), 'Max').title).not.toBe(greeting(wednesdayMorning, 'Max').title)
   })
   it('shortens very long names', () => {
-    expect(greeting(wednesdayMorning, 'Maximilian-Alexander-Theodor', false).title).toContain('Maximilian-Alex…')
+    expect(greeting(wednesdayMorning, 'Maximilian-Alexander-Theodor').title).toContain('Maximilian-Alex…')
   })
   it('knows a line for every weekday and time of day, with a name placeholder', () => {
     expect(GREETING_TEXT.WEEKDAYS).toHaveLength(7)
-    for (const lines of [...Object.values(GREETING_TEXT.LINES), GREETING_TEXT.DONE_LINES]) {
+    for (const lines of Object.values(GREETING_TEXT.LINES)) {
       expect(lines.length).toBeGreaterThanOrEqual(3)
       for (const line of lines) expect(line).toContain('{n}')
     }
     for (let hour = 0; hour < 24; hour++) {
-      const title = greeting(new Date(Date.UTC(2026, 9, 7, hour - 2)), 'Max', false).title
+      const title = greeting(new Date(Date.UTC(2026, 9, 7, hour - 2)), 'Max').title
       expect(title, `hour ${hour}`).toContain('Max')
       expect(title).not.toContain('{n}')
     }

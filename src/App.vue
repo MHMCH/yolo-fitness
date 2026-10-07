@@ -9,6 +9,7 @@ import { useSeasonProgress } from './composables/useSeasonProgress'
 import { useBoards } from './composables/useBoards'
 import { useTestMode } from './composables/useTestMode'
 import SeasonProgress from './components/SeasonProgress.vue'
+import StatusToast from './components/StatusToast.vue'
 import LeaderboardView from './components/LeaderboardView.vue'
 import LeagueView from './components/LeagueView.vue'
 import CelebrationOverlay from './components/CelebrationOverlay.vue'
@@ -34,12 +35,14 @@ const celebrating = ref(false)
 const { armed: testMode, tap: tapTestMode } = useTestMode()
 const featuresEnabled = computed(() => !requireTestMode || import.meta.env.DEV || preview.value || testMode.value)
 const featuresVisible = computed(() => featuresEnabled.value && featuresUnlocked.value && !celebrating.value)
+// The plus turns into a check mark for a moment after a confirmed save, because the toast alone could be missed.
+const justLogged = ref(false)
+let justLoggedTimer = 0
 // Street greetings: a gimmick behind the same guard. The clock ticks once a minute so the line follows the time of day.
 const clock = ref(new Date())
 const clockTimer = window.setInterval(() => { clock.value = new Date() }, 60_000)
 onBeforeUnmount(() => window.clearInterval(clockTimer))
-const trainedToday = computed(() => progress.days.value.includes(today.value))
-const street = computed(() => streetGreetings && featuresVisible.value ? greeting(clock.value, displayName.value, trainedToday.value) : null)
+const street = computed(() => streetGreetings && featuresVisible.value ? greeting(clock.value, displayName.value) : null)
 const openFrom = computed(() => monthBounds(today.value).start)
 const view = ref<'home' | 'history' | 'leaderboard' | 'league' | 'account'>('home')
 const boards = useBoards(identity, computed(() => view.value === 'leaderboard' || view.value === 'league'), computed(() => summary.value?.total_count),
@@ -109,6 +112,9 @@ async function logSession(date?: string) {
   const saved = await training.log(date)
   if (saved && identity.value === account) {
     void playSound()
+    justLogged.value = true
+    window.clearTimeout(justLoggedTimer)
+    justLoggedTimer = window.setTimeout(() => { justLogged.value = false }, 1400)
     if (featuresEnabled.value && !featuresUnlocked.value) { celebrating.value = true; void unlockFeatures() }
     else if (streetGreetings && featuresVisible.value) message.value = confirmation(new Date())
   }
@@ -171,6 +177,7 @@ async function deleteEntry(id: string, date: string) {
           <button class="log-button" :disabled="locked" :aria-label="pending ? 'Retry unconfirmed session' : 'Log a training session'" :title="pending ? 'Retry unconfirmed session' : 'Log a training session'" @click="logSession()">
             <LoaderCircle v-if="busy" class="spin" :size="66" :stroke-width="2" />
             <RefreshCw v-else-if="pending" :size="66" :stroke-width="2" />
+            <Check v-else-if="justLogged" class="logged-check" :size="96" :stroke-width="2.7" />
             <Plus v-else :size="96" :stroke-width="2.7" />
           </button>
           <span class="action-date">{{ displayDate(today) }}</span>
@@ -227,10 +234,6 @@ async function deleteEntry(id: string, date: string) {
 
       <div class="status-area" aria-live="polite">
         <p v-if="!online" class="feedback muted"><WifiOff :size="16" /> Offline. Logging needs a connection.</p>
-        <p v-if="message" class="feedback success"><Check :size="16" /> {{ message }}</p>
-        <p v-if="error" class="feedback error" role="alert">{{ error }}</p>
-        <button v-if="pending" class="secondary" :disabled="locked" @click="logSession()"><RefreshCw :size="16" /> Retry unconfirmed save</button>
-        <button v-else-if="error" class="secondary" :disabled="loading || busy || !online" @click="training.refresh()"><RefreshCw :size="16" /> Refresh</button>
       </div>
       <nav class="bottom-nav tabs" aria-label="Main navigation">
         <button class="tab" :class="{ selected: view === 'home' || view === 'history' }" :aria-current="view === 'home' || view === 'history' ? 'page' : undefined" @click="view = 'home'"><House :size="21" /><span>Home</span></button>
@@ -240,6 +243,7 @@ async function deleteEntry(id: string, date: string) {
       </nav>
     </main>
     <aside v-if="needRefresh" class="update-bar"><span>Update available.</span><button class="secondary" :disabled="busy || !!pending || authBusy" @click="updateServiceWorker(true)"><RefreshCw :size="16" /> Update</button><button class="icon-button" title="Dismiss update" aria-label="Dismiss update" @click="needRefresh = false"><X :size="18" /></button></aside>
+    <StatusToast v-if="identity" :message="message" :error="error" :pending="!!pending" :busy="locked" @retry="logSession()" @refresh="training.refresh()" @dismiss="error = ''" />
     <CelebrationOverlay v-if="celebrating" @close="celebrating = false" />
     <footer class="footer"><span>yolo-fitness</span><span>Europe/Berlin</span></footer>
   </div>
