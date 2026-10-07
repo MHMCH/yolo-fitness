@@ -2,6 +2,7 @@ import { berlinDate, monthBounds } from './trainingDates'
 import { addDays, addMonths, seasonEnd } from './seasonChart'
 import type { RankingRepository } from './rankingRepository'
 import type { TeamsRepository } from './teamsRepository'
+import type { TeamAdminRepository } from './teamAdminRepository'
 import type { SeasonRepository } from './seasonRepository'
 import type { SessionRepository } from './sessionRepository'
 import type { DailySeries, RankingRow, TeamDaily, TeamMonthRow, TeamQuarterRow, TrainingSession } from '../types/database'
@@ -19,7 +20,7 @@ function random(seed: number) {
   return () => { state = (state * 1664525 + 1013904223) % 4294967296; return state / 4294967296 }
 }
 
-export function createDemo(): { sessions: SessionRepository; season: SeasonRepository; ranking: RankingRepository; teams: TeamsRepository } {
+export function createDemo(): { sessions: SessionRepository; season: SeasonRepository; ranking: RankingRepository; teams: TeamsRepository; teamAdmin: TeamAdminRepository } {
   const today = berlinDate()
   const seasonStart = addDays(today, -60)
   const rows: TrainingSession[] = [
@@ -95,12 +96,13 @@ export function createDemo(): { sessions: SessionRepository; season: SeasonRepos
     },
   }
   // Quarter 1 has five teams; the other quarters have none, to show the empty state.
-  const teamDefs = [['Alex', 'Marco'], ['Daniel', 'Jens'], ['Jonas', 'Seba', 'Philipp'], ['Axel', 'Jörg'], ['Tobi', 'Torben']]
+  const teamDefsByQuarter = new Map<number, string[][]>([[1, [['Alex', 'Marco'], ['Daniel', 'Jens'], ['Jonas', 'Seba', 'Philipp'], ['Axel', 'Jörg'], ['Tobi', 'Torben']]]])
   const denseRank = (values: number[], value: number) => [...new Set(values.map((entry) => Math.round(entry * 1e9)))].sort((a, b) => b - a).indexOf(Math.round(value * 1e9)) + 1
   function monthRows(quarter: number, month: number): TeamMonthRow[] {
-    if (quarter !== 1) return []
-    const lo = addMonths(seasonStart, month - 1)
-    const hi = addMonths(seasonStart, month)
+    const teamDefs = teamDefsByQuarter.get(quarter) ?? []
+    if (!teamDefs.length) return []
+    const lo = addMonths(seasonStart, (quarter - 1) * 3 + month - 1)
+    const hi = addMonths(seasonStart, (quarter - 1) * 3 + month)
     const byName = new Map(everyone().map((person) => [person.name, person.days]))
     const raw = teamDefs.map((members, index) => {
       const sessions = members.flatMap((name) => byName.get(name) ?? []).filter((day) => day >= lo && day < hi).length
@@ -117,9 +119,9 @@ export function createDemo(): { sessions: SessionRepository; season: SeasonRepos
   const teams: TeamsRepository = {
     async month(quarter, month) { return monthRows(quarter, month) },
     async daily(quarter, month) {
-      if (quarter !== 1) return []
-      const lo = addMonths(seasonStart, month - 1)
-      const hi = addMonths(seasonStart, month)
+      const teamDefs = teamDefsByQuarter.get(quarter) ?? []
+      const lo = addMonths(seasonStart, (quarter - 1) * 3 + month - 1)
+      const hi = addMonths(seasonStart, (quarter - 1) * 3 + month)
       const byName = new Map(everyone().map((person) => [person.name, person.days]))
       return teamDefs.map((members, index): TeamDaily => {
         const perDay = new Map<string, number>()
@@ -129,8 +131,9 @@ export function createDemo(): { sessions: SessionRepository; season: SeasonRepos
       })
     },
     async quarter(quarter) {
-      if (quarter !== 1) return []
-      const perMonth = [1, 2, 3].map((month) => monthRows(1, month))
+      const teamDefs = teamDefsByQuarter.get(quarter) ?? []
+      if (!teamDefs.length) return []
+      const perMonth = [1, 2, 3].map((month) => monthRows(quarter, month))
       const rows = teamDefs.map((members, index) => {
         const entries = perMonth.map((list) => list.find((row) => row.slot === index + 1)!)
         return { team_id: `demo-team-${index + 1}`, slot: index + 1, members: [...members].sort(), member_count: members.length,
@@ -141,7 +144,21 @@ export function createDemo(): { sessions: SessionRepository; season: SeasonRepos
       return rows.map((row): TeamQuarterRow => ({ ...row, rank: denseRank(totals, row.total) })).sort((a, b) => a.rank - b.rank || a.slot - b.slot)
     },
   }
-  return { sessions, season, ranking, teams }
+  const teamAdmin: TeamAdminRepository = {
+    async people() { return everyone().map((person) => ({ id: person.id, name: person.name })) },
+    async assignments(_season, quarter) {
+      const result: Record<string, number | null> = {}
+      for (const [index, members] of (teamDefsByQuarter.get(quarter) ?? []).entries()) {
+        for (const name of members) result[everyone().find((person) => person.name === name)!.id] = index + 1
+      }
+      return result
+    },
+    async save(quarter, lists) {
+      const nameOf = new Map(everyone().map((person) => [person.id, person.name]))
+      teamDefsByQuarter.set(quarter, lists.map((ids) => ids.map((id) => nameOf.get(id)!)))
+    },
+  }
+  return { sessions, season, ranking, teams, teamAdmin }
 }
 
 export const createDemoRepository = () => createDemo().sessions

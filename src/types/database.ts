@@ -37,6 +37,18 @@ export type Database = {
         Update: never
         Relationships: []
       }
+      teams: {
+        Row: { id: string; season_id: number; quarter: number; slot: number }
+        Insert: never
+        Update: never
+        Relationships: []
+      }
+      team_members: {
+        Row: { season_id: number; quarter: number; user_id: string; team_id: string }
+        Insert: never
+        Update: never
+        Relationships: []
+      }
       profiles: {
         Row: Profile
         Insert: never
@@ -52,6 +64,7 @@ export type Database = {
       team_month_standings: { Args: { p_quarter: number; p_month: number }; Returns: TeamMonthRow[] }
       team_quarter_standings: { Args: { p_quarter: number }; Returns: TeamQuarterRow[] }
       team_daily_counts: { Args: { p_quarter: number; p_month: number }; Returns: TeamDaily[] }
+      set_team_assignments: { Args: { p_quarter: number; p_teams: string[][] }; Returns: undefined }
     }
     Enums: Record<string, never>
     CompositeTypes: Record<string, never>

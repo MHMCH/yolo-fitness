@@ -133,6 +133,19 @@ input { color: var(--text); background: var(--surface); border: 1px solid #37394
 .total-row .stack { grid-column: 2 / -1; display: flex; height: 6px; background: #23252b; border-radius: 3px; overflow: hidden; gap: 1px; }
 .stack-part { height: 100%; }
 .stack-part.live { opacity: .45; }
+.admin-link { margin-top: 20px; display: flex; }
+.admin-link + .signout { margin-top: 12px; }
+.admin-warning { margin-top: 14px; color: #efb87e; }
+.admin-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 18px; }
+.stepper { display: inline-flex; align-items: center; gap: 2px; font-size: 12px; margin-right: auto; }
+.stepper span { min-width: 64px; text-align: center; }
+.admin-people { list-style: none; margin: 18px 0 0; padding: 0; }
+.admin-people li { display: grid; grid-template-columns: 8px 1fr auto; align-items: center; gap: 10px; min-height: 52px; border-bottom: 1px solid var(--line); }
+.admin-name { color: var(--text); font-size: 14px; }
+select { font: inherit; font-size: 13px; color: var(--text); background: var(--surface); border: 1px solid #373941; border-radius: 8px; padding: 9px 10px; min-height: 40px; }
+.admin-subtitle { font-size: 12px; font-weight: 650; color: var(--muted); margin: 26px 0 0; }
+.admin-teams { margin-top: 6px; }
+.admin-save { width: 100%; margin-top: 22px; }
 .update-bar { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 12px; font-size: 12px; }
 .spin { animation: spin 1s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }

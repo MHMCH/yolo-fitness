@@ -8,29 +8,33 @@ import { useSessionSound } from './composables/useSessionSound'
 import { useSeasonProgress } from './composables/useSeasonProgress'
 import { useRanking } from './composables/useRanking'
 import { useTeams } from './composables/useTeams'
+import { useTeamAdmin } from './composables/useTeamAdmin'
 import SeasonProgress from './components/SeasonProgress.vue'
 import RankingView from './components/RankingView.vue'
 import TeamsView from './components/TeamsView.vue'
+import AdminTeamsView from './components/AdminTeamsView.vue'
 import { configured } from './lib/supabase'
 import { sessionRepository, type SessionRepository } from './lib/sessionRepository'
 import { seasonRepository, type SeasonRepository } from './lib/seasonRepository'
 import { rankingRepository, type RankingRepository } from './lib/rankingRepository'
 import { teamsRepository, type TeamsRepository } from './lib/teamsRepository'
+import { teamAdminRepository, type TeamAdminRepository } from './lib/teamAdminRepository'
 import { displayDate, displayMonth } from './lib/trainingDates'
 import { currentPeriodStart } from './lib/seasonChart'
 
-const { user, loading: authLoading, profileLoading, profileFailed, busy: authBusy, error: authError, preview, displayName, lastYearCount, identity, signIn, setName, setLastYearCount, retryProfile, signOut } = useAuth()
-let demo: { sessions: SessionRepository; season: SeasonRepository; ranking: RankingRepository; teams: TeamsRepository } | null = null
+const { user, loading: authLoading, isAdmin, profileLoading, profileFailed, busy: authBusy, error: authError, preview, displayName, lastYearCount, identity, signIn, setName, setLastYearCount, retryProfile, signOut } = useAuth()
+let demo: { sessions: SessionRepository; season: SeasonRepository; ranking: RankingRepository; teams: TeamsRepository; teamAdmin: TeamAdminRepository } | null = null
 const training = useTrainingSessions(identity, () => preview.value ? demo!.sessions : sessionRepository)
 const { summary, history, more, loading, busy, online, message, error, pending, today } = training
 const progress = useSeasonProgress(identity, computed(() => summary.value?.total_count), () => preview.value ? demo!.season : seasonRepository)
 const lastYearInput = ref('')
 const openFrom = computed(() => progress.season.value ? currentPeriodStart(progress.season.value.starts_on, today.value) : '0001-01-01')
-const view = ref<'home' | 'history' | 'ranking' | 'teams' | 'account'>('home')
+const view = ref<'home' | 'history' | 'ranking' | 'teams' | 'account' | 'admin'>('home')
 const ranking = useRanking(identity, computed(() => view.value === 'ranking'), computed(() => summary.value?.total_count),
   () => preview.value ? demo!.ranking : rankingRepository)
 const teams = useTeams(identity, computed(() => view.value === 'teams'), computed(() => summary.value?.total_count), progress.season, today,
   () => preview.value ? demo!.teams : teamsRepository)
+const teamAdmin = useTeamAdmin(identity, computed(() => view.value === 'admin'), progress.season, () => preview.value ? demo!.teamAdmin : teamAdminRepository)
 const email = ref('')
 const password = ref('')
 const name = ref('')
@@ -170,6 +174,10 @@ async function deleteEntry(id: string, date: string) {
           :loading="teams.loading.value" :error="teams.error.value" @retry="teams.reload()" />
       </template>
 
+      <template v-else-if="view === 'admin' && isAdmin">
+        <AdminTeamsView :season="progress.season.value" :today="today" :admin="teamAdmin" @back="view = 'account'" />
+      </template>
+
       <template v-else>
         <p class="eyebrow">YOUR ACCOUNT</p><h1>Hey, {{ displayName }}.</h1>
         <form v-if="!preview" class="auth-form account-form" @submit.prevent="setName(name)">
@@ -184,6 +192,7 @@ async function deleteEntry(id: string, date: string) {
         <p v-if="user" class="muted account-email">{{ user.email }}</p>
         <label class="sound-setting"><span>Session sound</span><input type="checkbox" :checked="soundEnabled" @change="setSoundEnabled(($event.target as HTMLInputElement).checked)" /></label>
         <p v-if="authError" class="feedback error" role="alert">{{ authError }}</p>
+        <button v-if="isAdmin" class="secondary admin-link" @click="view = 'admin'"><Users :size="18" /> Manage teams</button>
         <button class="secondary signout" :disabled="authBusy || busy || !!pending" @click="signOut"><LogOut :size="18" /> {{ preview ? 'Exit preview' : 'Sign out' }}</button>
       </template>
 
@@ -198,7 +207,7 @@ async function deleteEntry(id: string, date: string) {
         <button class="tab" :class="{ selected: view === 'home' || view === 'history' }" :aria-current="view === 'home' || view === 'history' ? 'page' : undefined" @click="view = 'home'"><House :size="21" /><span>Home</span></button>
         <button class="tab" :class="{ selected: view === 'ranking' }" :aria-current="view === 'ranking' ? 'page' : undefined" @click="view = 'ranking'"><Trophy :size="21" /><span>Ranking</span></button>
         <button class="tab" :class="{ selected: view === 'teams' }" :aria-current="view === 'teams' ? 'page' : undefined" @click="view = 'teams'"><Users :size="21" /><span>Teams</span></button>
-        <button class="tab" :class="{ selected: view === 'account' }" :aria-current="view === 'account' ? 'page' : undefined" @click="view = 'account'"><UserRound :size="21" /><span>Account</span></button>
+        <button class="tab" :class="{ selected: view === 'account' || view === 'admin' }" :aria-current="view === 'account' || view === 'admin' ? 'page' : undefined" @click="view = 'account'"><UserRound :size="21" /><span>Account</span></button>
       </nav>
     </main>
     <aside v-if="needRefresh" class="update-bar"><span>Update available.</span><button class="secondary" :disabled="busy || !!pending || authBusy" @click="updateServiceWorker(true)"><RefreshCw :size="16" /> Update</button><button class="icon-button" title="Dismiss update" aria-label="Dismiss update" @click="needRefresh = false"><X :size="18" /></button></aside>
