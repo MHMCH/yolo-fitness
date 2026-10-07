@@ -125,7 +125,7 @@ async function deleteEntry(id: string, date: string) {
 </script>
 
 <template>
-  <div class="app-shell">
+  <div class="app-shell" :class="{ 'with-nav': identity && displayName }">
     <header class="topbar">
       <a class="brand" href="#" @click.prevent="view = 'home'">
         <img :src="iconUrl" width="30" height="30" alt="" />
