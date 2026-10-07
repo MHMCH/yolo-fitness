@@ -4,6 +4,7 @@ import type { BoardRepository } from './boardRepository'
 import type { SeasonRepository } from './seasonRepository'
 import type { SessionRepository } from './sessionRepository'
 import { berlinDate, monthBounds, quarterBounds } from './trainingDates'
+import { newId } from './uuid'
 import type { DailyPoints, LeaderboardEntry, TrainingSession } from '../types/database'
 
 const earlierDaysAgo = [2, 3, 5, 6, 9, 10, 12, 15, 17, 18, 21, 24, 26, 30, 33, 35, 40, 44, 47]
@@ -25,12 +26,12 @@ export function createDemo(): { sessions: SessionRepository; season: SeasonRepos
   const seasonStart = addMonths(quarterBounds(today).start, -6)
   const rows: TrainingSession[] = [
     ...Array.from({ length: 12 }, (_, index) => ({
-      id: crypto.randomUUID(), user_id: 'local-preview',
+      id: newId(), user_id: 'local-preview',
       trained_on: index < 4 ? today : `${Number(today.slice(0, 4)) - 1}-09-15`,
       created_at: new Date(Date.now() - index * 86400000).toISOString(),
     })),
     ...earlierDaysAgo.map((ago) => ({
-      id: crypto.randomUUID(), user_id: 'local-preview', trained_on: addDays(today, -ago),
+      id: newId(), user_id: 'local-preview', trained_on: addDays(today, -ago),
       created_at: new Date(Date.now() - ago * 86400000).toISOString(),
     })),
   ]

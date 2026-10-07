@@ -1,5 +1,6 @@
 import { computed, onScopeDispose, ref, watch, type Ref } from 'vue'
 import { berlinDate, validTrainingDate } from '../lib/trainingDates'
+import { newId } from '../lib/uuid'
 import { commitSession, sessionRepository, type InsertRequest, type SessionRepository } from '../lib/sessionRepository'
 import type { Summary, TrainingSession } from '../types/database'
 
@@ -65,7 +66,7 @@ export function useTrainingSessions(identity: Ref<string>, repository: () => Ses
       error.value = 'Choose today or a valid past date.'; return
     }
     const current = generation
-    const request = pending.value ?? { id: crypto.randomUUID(), trained_on: date ?? today.value }
+    const request = pending.value ?? { id: newId(), trained_on: date ?? today.value }
     try { persistPending(request) }
     catch { error.value = 'Could not store a safe retry ID. Enable site storage before logging.'; return }
     pending.value = request

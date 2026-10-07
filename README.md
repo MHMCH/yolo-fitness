@@ -22,6 +22,8 @@ Confirmed session saves play `public/session-logged.mp3` using Web Audio, unlock
 
 4. Restart the dev server after changing environment variables. Only these public Vite values belong in frontend configuration. Never put an admin secret or legacy `service_role` key in any `VITE_*` variable, source, git, `dist`, Pages variables or CI.
 
+To try the app on a phone in the same network, run `npm run dev:lan` instead, find the PC's address (`ipconfig`, the IPv4 address of the Wi-Fi or Ethernet adapter, for example 192.168.1.20) and open `http://192.168.1.20:5173` on the phone. Allow Node.js on **private** networks when Windows asks (or add the rule for TCP port 5173 yourself), keep the phone on the same Wi-Fi (not a guest network), and stop the server afterwards because it is reachable by every device in the network. The page is plain http, so the browser treats it as an insecure page: there is no service worker or install prompt, and the copy buttons do not work (clipboard access needs https); logging and everything else does. The production build is not exposed this way by default (`npm run preview` binds to localhost only).
+
 Commands from the current package scripts:
 
 ```sh
