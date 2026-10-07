@@ -15,8 +15,12 @@ export function useAuth() {
   const preview = ref(false)
   const previewName = ref('Alex')
   const previewLastYear = ref<number | null>(40)
+  const previewUnlocked = ref(false)
+  // Set when the unlock could not be saved, so the screens still appear on this device.
+  const unlockedLocally = ref(false)
   const displayName = computed(() => preview.value ? previewName.value : profile.value?.display_name ?? '')
   const lastYearCount = computed(() => preview.value ? previewLastYear.value : profile.value?.last_year_count ?? null)
+  const featuresUnlocked = computed(() => preview.value ? previewUnlocked.value : Boolean(profile.value?.features_unlocked_at) || unlockedLocally.value)
   const isAdmin = computed(() => preview.value || Boolean(profile.value?.is_admin))
   const identity = computed(() => preview.value ? 'local-preview' : user.value?.id ?? '')
 
@@ -35,6 +39,7 @@ export function useAuth() {
   function applyUser(next: User | null) {
     const changed = next?.id !== user.value?.id
     user.value = next
+    if (changed) unlockedLocally.value = false
     if (!next) {
       profile.value = null
       profileLoading.value = false
@@ -95,6 +100,18 @@ export function useAuth() {
     } catch { error.value = 'Could not save last year\'s sessions. Please try again.' }
     finally { busy.value = false }
   }
+  /** Remember that this account has seen the unlock celebration; failures keep it unlocked on this device only. */
+  async function unlockFeatures() {
+    if (featuresUnlocked.value) return
+    if (preview.value) { previewUnlocked.value = true; return }
+    const id = user.value?.id
+    if (!id) return
+    try {
+      const saved = await saveProfile(id, { features_unlocked_at: new Date().toISOString() })
+      if (user.value?.id === id) profile.value = saved
+    } catch { if (user.value?.id === id) unlockedLocally.value = true }
+  }
+  function relockPreview() { previewUnlocked.value = false }
   async function signOut() {
     error.value = ''
     if (preview.value) { preview.value = false; return }
@@ -107,7 +124,7 @@ export function useAuth() {
     finally { busy.value = false }
   }
   return {
-    user, profile, loading, profileLoading, profileFailed, busy, error, preview, displayName, lastYearCount, isAdmin, identity,
-    signIn, setName, setLastYearCount, retryProfile, signOut,
+    user, profile, loading, profileLoading, profileFailed, busy, error, preview, displayName, lastYearCount, isAdmin, identity, featuresUnlocked,
+    signIn, setName, setLastYearCount, retryProfile, unlockFeatures, relockPreview, signOut,
   }
 }

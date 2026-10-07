@@ -12,6 +12,7 @@ import { useTeamAdmin } from './composables/useTeamAdmin'
 import SeasonProgress from './components/SeasonProgress.vue'
 import RankingView from './components/RankingView.vue'
 import TeamsView from './components/TeamsView.vue'
+import CelebrationOverlay from './components/CelebrationOverlay.vue'
 import AdminTeamsView from './components/AdminTeamsView.vue'
 import { configured } from './lib/supabase'
 import { sessionRepository, type SessionRepository } from './lib/sessionRepository'
@@ -22,12 +23,15 @@ import { teamAdminRepository, type TeamAdminRepository } from './lib/teamAdminRe
 import { displayDate, displayMonth } from './lib/trainingDates'
 import { currentPeriodStart } from './lib/seasonChart'
 
-const { user, loading: authLoading, isAdmin, profileLoading, profileFailed, busy: authBusy, error: authError, preview, displayName, lastYearCount, identity, signIn, setName, setLastYearCount, retryProfile, signOut } = useAuth()
+const { user, loading: authLoading, isAdmin, profileLoading, profileFailed, busy: authBusy, error: authError, preview, displayName, lastYearCount, identity, featuresUnlocked, signIn, setName, setLastYearCount, retryProfile, unlockFeatures, relockPreview, signOut } = useAuth()
 let demo: { sessions: SessionRepository; season: SeasonRepository; ranking: RankingRepository; teams: TeamsRepository; teamAdmin: TeamAdminRepository } | null = null
 const training = useTrainingSessions(identity, () => preview.value ? demo!.sessions : sessionRepository)
 const { summary, history, more, loading, busy, online, message, error, pending, today } = training
 const progress = useSeasonProgress(identity, computed(() => summary.value?.total_count), () => preview.value ? demo!.season : seasonRepository)
 const lastYearInput = ref('')
+// The season screens stay hidden until the first confirmed session; the celebration ends before they appear.
+const celebrating = ref(false)
+const featuresVisible = computed(() => featuresUnlocked.value && !celebrating.value)
 const openFrom = computed(() => progress.season.value ? currentPeriodStart(progress.season.value.starts_on, today.value) : '0001-01-01')
 const view = ref<'home' | 'history' | 'ranking' | 'teams' | 'account' | 'admin'>('home')
 const ranking = useRanking(identity, computed(() => view.value === 'ranking'), computed(() => summary.value?.total_count),
@@ -45,7 +49,7 @@ const iconUrl = `${import.meta.env.BASE_URL}favicon.png`
 const locked = computed(() => busy.value || loading.value || !online.value || !summary.value)
 const { needRefresh, updateServiceWorker } = useRegisterSW()
 const { enabled: soundEnabled, prepare: prepareSound, play: playSound, setEnabled: setSoundEnabled } = useSessionSound()
-watch(identity, () => { view.value = 'home'; name.value = ''; pastDate.value = ''; adding.value = false })
+watch(identity, () => { celebrating.value = false; view.value = 'home'; name.value = ''; pastDate.value = ''; adding.value = false })
 watch(displayName, (value) => { name.value = value }, { immediate: true })
 watch(lastYearCount, (value) => { lastYearInput.value = value === null ? '' : String(value) }, { immediate: true })
 async function submitSignIn() {
@@ -73,7 +77,10 @@ async function logSession(date?: string) {
   const account = identity.value
   prepareSound()
   const saved = await training.log(date)
-  if (saved && identity.value === account) void playSound()
+  if (saved && identity.value === account) {
+    void playSound()
+    if (!featuresUnlocked.value) { celebrating.value = true; void unlockFeatures() }
+  }
 }
 async function deleteEntry(id: string, date: string) {
   if (window.confirm(`Permanently delete the session on ${displayDate(date)}?`)) await training.remove(id)
@@ -145,8 +152,8 @@ async function deleteEntry(id: string, date: string) {
           <div class="counter"><span class="counter-value">{{ summary?.month_count ?? '--' }}</span><span class="counter-label">Sessions this month</span></div>
           <div class="counter"><span class="counter-value">{{ summary?.total_count ?? '--' }}</span><span class="counter-label">Total sessions</span></div>
         </section>
-        <SeasonProgress v-if="progress.season.value" :season="progress.season.value" :days="progress.days.value" :today="today" :last-year="lastYearCount" />
-        <p v-else-if="progress.error.value" class="feedback muted">{{ progress.error.value }}</p>
+        <SeasonProgress v-if="featuresVisible && progress.season.value" :season="progress.season.value" :days="progress.days.value" :today="today" :last-year="lastYearCount" />
+        <p v-else-if="featuresVisible && progress.error.value" class="feedback muted">{{ progress.error.value }}</p>
         <button class="secondary history-link" @click="view = 'history'"><History :size="18" /> Session history</button>
       </template>
 
@@ -184,7 +191,7 @@ async function deleteEntry(id: string, date: string) {
           <label for="account-name">Display name</label><input id="account-name" v-model="name" maxlength="40" required />
           <button class="secondary" :disabled="authBusy || !name.trim() || name.trim() === displayName"><Check :size="18" /> Save name</button>
         </form>
-        <form class="auth-form account-form" @submit.prevent="saveLastYear">
+        <form v-if="featuresVisible" class="auth-form account-form" @submit.prevent="saveLastYear">
           <label for="last-year">Last year's sessions</label>
           <input id="last-year" v-model="lastYearInput" type="number" inputmode="numeric" min="0" step="1" placeholder="Optional" />
           <button class="secondary" :disabled="authBusy"><Check :size="18" /> Save</button>
@@ -192,6 +199,7 @@ async function deleteEntry(id: string, date: string) {
         <p v-if="user" class="muted account-email">{{ user.email }}</p>
         <label class="sound-setting"><span>Session sound</span><input type="checkbox" :checked="soundEnabled" @change="setSoundEnabled(($event.target as HTMLInputElement).checked)" /></label>
         <p v-if="authError" class="feedback error" role="alert">{{ authError }}</p>
+        <button v-if="preview" class="secondary admin-link" @click="relockPreview"><RefreshCw :size="18" /> Replay unlock (preview)</button>
         <button v-if="isAdmin" class="secondary admin-link" @click="view = 'admin'"><Users :size="18" /> Manage teams</button>
         <button class="secondary signout" :disabled="authBusy || busy || !!pending" @click="signOut"><LogOut :size="18" /> {{ preview ? 'Exit preview' : 'Sign out' }}</button>
       </template>
@@ -205,12 +213,13 @@ async function deleteEntry(id: string, date: string) {
       </div>
       <nav class="bottom-nav tabs" aria-label="Main navigation">
         <button class="tab" :class="{ selected: view === 'home' || view === 'history' }" :aria-current="view === 'home' || view === 'history' ? 'page' : undefined" @click="view = 'home'"><House :size="21" /><span>Home</span></button>
-        <button class="tab" :class="{ selected: view === 'ranking' }" :aria-current="view === 'ranking' ? 'page' : undefined" @click="view = 'ranking'"><Trophy :size="21" /><span>Ranking</span></button>
-        <button class="tab" :class="{ selected: view === 'teams' }" :aria-current="view === 'teams' ? 'page' : undefined" @click="view = 'teams'"><Users :size="21" /><span>Teams</span></button>
+        <button v-if="featuresVisible" class="tab" :class="{ selected: view === 'ranking' }" :aria-current="view === 'ranking' ? 'page' : undefined" @click="view = 'ranking'"><Trophy :size="21" /><span>Ranking</span></button>
+        <button v-if="featuresVisible" class="tab" :class="{ selected: view === 'teams' }" :aria-current="view === 'teams' ? 'page' : undefined" @click="view = 'teams'"><Users :size="21" /><span>Teams</span></button>
         <button class="tab" :class="{ selected: view === 'account' || view === 'admin' }" :aria-current="view === 'account' || view === 'admin' ? 'page' : undefined" @click="view = 'account'"><UserRound :size="21" /><span>Account</span></button>
       </nav>
     </main>
     <aside v-if="needRefresh" class="update-bar"><span>Update available.</span><button class="secondary" :disabled="busy || !!pending || authBusy" @click="updateServiceWorker(true)"><RefreshCw :size="16" /> Update</button><button class="icon-button" title="Dismiss update" aria-label="Dismiss update" @click="needRefresh = false"><X :size="18" /></button></aside>
+    <CelebrationOverlay v-if="celebrating" @close="celebrating = false" />
     <footer class="footer"><span>yolo-fitness</span><span>Europe/Berlin</span></footer>
   </div>
 </template>

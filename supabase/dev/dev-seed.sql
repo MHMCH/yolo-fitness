@@ -3,7 +3,7 @@
 -- Run in the dashboard SQL Editor (it runs without a user session, so the month lock does not apply).
 -- It expects the existing test accounts u1@test.test .. u11@test.test (u1 = Max, the admin) and:
 --   * moves the test season's start date to v_start so several months are closed and one is live
---   * names the 11 profiles and gives each a plausible last-year count
+--   * names the 11 profiles, gives each a plausible last-year count and unlocks the season screens
 --   * adds random sessions from v_start until today: about half the group trains 0-2 times a week,
 --     the other half 1-3 times (each person gets a fixed random rate in their range)
 --   * sets the Q1 teams to the five fixed teams below
@@ -51,7 +51,8 @@ begin
     v_low := random() < 0.5;
     v_rate := case when v_low then random() * 2 else 1 + random() * 2 end;   -- sessions per week
     update public.profiles
-      set display_name = v_names[i], last_year_count = round(v_rate * 52 * (0.7 + random() * 0.7))::integer
+      set display_name = v_names[i], last_year_count = round(v_rate * 52 * (0.7 + random() * 0.7))::integer,
+        features_unlocked_at = coalesce(features_unlocked_at, now())
       where user_id = v_id;
     -- weekend bias, rare double sessions
     insert into public.training_sessions (id, user_id, trained_on, created_at)

@@ -12,7 +12,7 @@ export async function loadProfile(userId: string): Promise<Profile | null> {
   return data
 }
 
-export async function saveProfile(userId: string, patch: { display_name?: string | null; last_year_count?: number | null }): Promise<Profile> {
+export async function saveProfile(userId: string, patch: { display_name?: string | null; last_year_count?: number | null; features_unlocked_at?: string | null }): Promise<Profile> {
   const { data, error } = await client().from('profiles').update(patch).eq('user_id', userId).select('*').single()
   if (error) throw error
   return data

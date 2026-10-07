@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises'
 import { PGlite } from '@electric-sql/pglite'
 
-export const migrations = ['202610040001_training.sql', '202610070001_season.sql']
+export const migrations = ['202610040001_training.sql', '202610070001_season.sql', '202610070002_features_unlock.sql']
 
 export async function createDatabase(users: Array<{ id: string; name?: string }>) {
   const database = new PGlite()

@@ -39,6 +39,7 @@ describe('upgrading an existing database with the season migration', () => {
     `)
     before = await snapshot()
     await database.exec(await read('202610070001_season.sql'))
+    await database.exec(await read('202610070002_features_unlock.sql'))
   }, 30_000)
   afterAll(async () => { await database?.close() })
 
@@ -57,6 +58,15 @@ describe('upgrading an existing database with the season migration', () => {
       { user_id: users[1].id, display_name: null, is_admin: false },
       { user_id: users[2].id, display_name: null, is_admin: false },
     ])
+  })
+  it('leaves every existing account locked out of the season screens until its next session', async () => {
+    expect((await database.query('select count(*)::int as n from public.profiles where features_unlocked_at is not null')).rows).toEqual([{ n: 0 }])
+  })
+  it('can roll back the unlock column alone', async () => {
+    const down = await readFile(new URL('../supabase/rollback/202610070002_features_unlock_down.sql', import.meta.url), 'utf8')
+    await database.exec(down)
+    expect((await database.query(`select count(*)::int as n from information_schema.columns where table_name = 'profiles' and column_name = 'features_unlocked_at'`)).rows).toEqual([{ n: 0 }])
+    await database.exec(await read('202610070002_features_unlock.sql'))
   })
   it('does not make anyone an administrator', async () => {
     expect((await database.query('select count(*)::int as n from public.profiles where is_admin')).rows).toEqual([{ n: 0 }])

@@ -21,6 +21,8 @@ Install before signing in: the installed app and a browser tab can have separate
 
 ## Season, Ranking And Teams
 
+*These screens unlock with a surprise after your next logged session.*
+
 - **Home** shows your season curve from the start of the season. The green line is the goal of 100 sessions and the second line is last year's count, so you can see how far you are from beating it. Slide a finger over the chart to read exact values; the tooltip disappears when you let go.
 - **Ranking** shows everyone's season total and a chart of all lines. You and the people directly above and below you are in colour; everyone else is grey. Tap a name to highlight that person.
 - **Teams** shows the standings of the selected quarter and month. The running month is live: it shows the average sessions per team member and has no bonus yet. When a month closes, the top three teams get +3, +2 and +1 (equal scores share the place). **Total** adds up the quarter. Your own team is shown in a card and in bold, but not always on top.

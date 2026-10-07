@@ -36,6 +36,13 @@ describe('season, profiles, month lock and aggregate functions', () => {
       expect((await asUser('authenticated', ids.b, `update public.profiles set display_name = 'Hacked' where user_id = '${ids.c}' returning user_id`)).rows).toEqual([])
       await asUser('authenticated', ids.b, `update public.profiles set display_name = 'Ben' where user_id = '${ids.b}'`)
     })
+    it('lets users record their own unlock time but nobody else\'s', async () => {
+      expect((await asUser('authenticated', ids.b, `select features_unlocked_at from public.profiles where user_id = '${ids.b}'`)).rows).toEqual([{ features_unlocked_at: null }])
+      await asUser('authenticated', ids.b, `update public.profiles set features_unlocked_at = now() where user_id = '${ids.b}'`)
+      expect((await asUser('authenticated', ids.b, `select features_unlocked_at is not null as unlocked from public.profiles where user_id = '${ids.b}'`)).rows).toEqual([{ unlocked: true }])
+      expect((await asUser('authenticated', ids.b, `update public.profiles set features_unlocked_at = now() where user_id = '${ids.c}' returning user_id`)).rows).toEqual([])
+      await expect(asUser('anon', '', `update public.profiles set features_unlocked_at = now()`)).rejects.toMatchObject({ code: '42501' })
+    })
     it('blocks self-promotion, duplicate names and invalid counts', async () => {
       await expect(asUser('authenticated', ids.b, `update public.profiles set is_admin = true where user_id = '${ids.b}'`)).rejects.toMatchObject({ code: '42501' })
       await expect(asUser('authenticated', ids.b, `update public.profiles set display_name = 'ANNA' where user_id = '${ids.b}'`)).rejects.toMatchObject({ code: '23505' })

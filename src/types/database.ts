@@ -7,7 +7,11 @@ export type TrainingSession = {
 
 export type Summary = { today: string; month_count: number; total_count: number }
 export type Season = { id: number; name: string; starts_on: string }
-export type Profile = { user_id: string; display_name: string | null; last_year_count: number | null; is_admin: boolean }
+export type Profile = {
+  user_id: string; display_name: string | null; last_year_count: number | null; is_admin: boolean
+  /** When the account unlocked the season screens; null while they are still hidden. */
+  features_unlocked_at: string | null
+}
 
 export type RankingRow = { user_id: string; display_name: string; sessions: number; rank: number; last_year_count: number | null }
 export type DailySeries = { user_id: string; days: string[]; counts: number[] }
@@ -52,7 +56,7 @@ export type Database = {
       profiles: {
         Row: Profile
         Insert: never
-        Update: { display_name?: string | null; last_year_count?: number | null }
+        Update: { display_name?: string | null; last_year_count?: number | null; features_unlocked_at?: string | null }
         Relationships: []
       }
     }
