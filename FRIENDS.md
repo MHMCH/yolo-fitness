@@ -19,16 +19,18 @@ Install before signing in: the installed app and a browser tab can have separate
 - Logging and refreshing need an internet connection. An installed app can open offline, but it does not queue saves.
 - If a save is unconfirmed, reconnect and use **Retry unconfirmed save**. This retries the same session safely. Do not tap new actions or add another entry to resolve uncertainty; an error is not a saved confirmation.
 
-## Season, Ranking And Teams
+## Season, Leaderboard And League
 
 *These screens unlock with a surprise after your next logged session.*
 
 - **Home** shows your season curve from the start of the season. The green line is the goal of 100 sessions and the second line is last year's count, so you can see how far you are from beating it. Slide a finger over the chart to read exact values; the tooltip disappears when you let go.
-- **Ranking** shows everyone's season total and a chart of all lines. You and the people directly above and below you are in colour; everyone else is grey. Tap a name to highlight that person.
-- **Teams** shows the standings of the selected quarter and month. The running month is live: it shows the average sessions per team member and has no bonus yet. When a month closes, the top three teams get +3, +2 and +1 (equal scores share the place). **Total** adds up the quarter. Your own team is shown in a card and in bold, but not always on top.
+- **Leaderboard** ranks everyone by sessions this season. The top three get a gold, silver or bronze medal and tied people share a place. Arrows show who moved up or down since yesterday. The chart shows all lines; you and the people directly above and below you are in colour, everyone else is grey. Tap a name to highlight that person.
+- **League** is the team competition per quarter. Pick a quarter and a month, or **Total** for the quarter. A team's score is its members' sessions divided by its number of members. While a month runs, a chip shows the bonus a team would get if the month ended now (+3, +2, +1); the bonuses are awarded when the month closes at 23:59 on its last day. Tied teams share the place, and a team without sessions gets no bonus. **Total** adds up the quarter (closed months with bonus, the running month without). The champions of finished quarters are listed above the table.
+- Your own team is shown in a card and in bold, but not always on top.
+- The copy button puts the visible table on your clipboard as text, ready to paste into WhatsApp.
 - Everyone can see names, season totals, team scores and per-day totals. Nobody can see another person's individual session list.
-- Teams are drawn by the organizer each quarter. If a quarter shows "not drawn yet", they have not set it up.
+- Teams are fixed by the organizer for each quarter.
 
 ## Account Help
 
-Use **Account** to edit your display name, enter **last year's sessions** (used for the second line on the Home chart) or sign out. Password changes and email recovery are not available in the app. For a forgotten password, lost device or suspected compromise, contact the organizer through your usual private channel. They can reset your existing account while keeping its history; no reset email is sent.
+Use **Account** to edit your display name, enter **last year's sessions** (used for the second line on the Home chart) or sign out. Please keep your display name unique, because the charts identify people by name. Password changes and email recovery are not available in the app. For a forgotten password, lost device or suspected compromise, contact the organizer through your usual private channel. They can reset your existing account while keeping its history; no reset email is sent.
