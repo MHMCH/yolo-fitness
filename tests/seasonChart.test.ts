@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  addDays, addMonths, chartTop, cumulativeByDay, currentPeriodStart, currentSeason, diffDays, niceCeil, recentPaceProjection, monthTicks, visibleDays, seasonEnd, seasonLength,
+  addDays, addMonths, chartTop, cumulativeByDay, diffDays, niceCeil, recentPaceProjection, monthTicks, visibleDays, seasonEnd, seasonLength, seasonOf,
 } from '../src/lib/seasonChart'
 
 describe('season calendar helpers', () => {
@@ -18,17 +18,9 @@ describe('season calendar helpers', () => {
     expect(seasonLength('2026-10-01')).toBe(365)
     expect(seasonLength('2027-10-01')).toBe(366)
   })
-  it('selects the season covering today', () => {
-    const seasons = [{ starts_on: '2025-10-01' }, { starts_on: '2026-10-01' }]
-    expect(currentSeason(seasons, '2026-10-07')).toEqual({ starts_on: '2026-10-01' })
-    expect(currentSeason(seasons, '2026-09-30')).toEqual({ starts_on: '2025-10-01' })
-    expect(currentSeason(seasons, '2028-01-01')).toBeNull()
-    expect(currentSeason([{ starts_on: '2026-10-01' }], '2026-09-30')).toBeNull()
-  })
-  it('finds the start of the open monthly period', () => {
-    expect(currentPeriodStart('2026-10-01', '2026-10-07')).toBe('2026-10-01')
-    expect(currentPeriodStart('2026-10-01', '2026-12-31')).toBe('2026-12-01')
-    expect(currentPeriodStart('2026-10-01', '2027-01-01')).toBe('2027-01-01')
+  it('names the season after its years', () => {
+    expect(seasonOf('2026-10-01')).toEqual({ name: 'Season 2026/27', starts_on: '2026-10-01' })
+    expect(seasonOf('2099-04-01').name).toBe('Season 2099/00')
   })
   it('labels the month starts', () => {
     const ticks = monthTicks('2026-10-01')

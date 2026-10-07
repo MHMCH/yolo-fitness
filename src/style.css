@@ -105,7 +105,7 @@ input { color: var(--text); background: var(--surface); border: 1px solid #37394
 .heading-text { flex: 1; min-width: 0; }
 .ranking-chart { margin-top: 20px; }
 .rank-list { list-style: none; margin: 16px 0 0; padding: 0; }
-.rank-row { display: grid; grid-template-columns: 22px 8px minmax(60px, 92px) 1fr 34px; align-items: center; gap: 9px; width: 100%; min-height: 44px; padding: 0 4px; background: transparent; color: var(--text); text-align: left; border-bottom: 1px solid var(--line); border-radius: 0; font-size: 13px; }
+.rank-row { display: grid; grid-template-columns: 22px 8px minmax(60px, 92px) 1fr 34px 18px; align-items: center; gap: 9px; width: 100%; min-height: 44px; padding: 0 4px; background: transparent; color: var(--text); text-align: left; border-bottom: 1px solid var(--line); border-radius: 0; font-size: 13px; }
 .rank-row[aria-pressed="true"] { background: var(--surface); }
 .me .rank-name { font-weight: 750; }
 .rank-place { color: var(--muted); font-size: 11px; text-align: right; font-variant-numeric: tabular-nums; }
@@ -168,6 +168,22 @@ select { font: inherit; font-size: 13px; color: var(--text); background: var(--s
 	.rainbow path { stroke-dashoffset: 0; }
 	.celebration-stars polygon { opacity: .7; }
 }
+.board-heading { flex-wrap: wrap; }
+.board-heading > div:first-child { min-width: 0; flex: 1 1 180px; }
+.board-actions { display: flex; flex-shrink: 0; }
+.board-move { display: grid; place-items: center; color: var(--muted); }
+.board-move.up { color: var(--green); }.board-move.down { color: #ffa0b0; }
+.gold { color: #f2c94c; }.silver { color: #c4c8d0; }.bronze { color: #d0905f; }
+.rank-place { display: grid; place-items: center; }
+.champions { margin-top: 20px; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
+.champions ul { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.champions li { display: flex; align-items: center; gap: 10px; font-size: 13px; overflow-wrap: anywhere; }
+.champions svg { flex-shrink: 0; }
+.medals { display: inline-flex; flex-wrap: wrap; gap: 3px; vertical-align: middle; margin-left: 6px; }
+.bonus-chip { display: inline-block; margin-left: 6px; font-size: 11px; font-weight: 700; }
+.bonus-legend { font-size: 11px; line-height: 1.7; margin: 14px 0 0; }
+.board-error { margin-top: 18px; }
+.copy-feedback:not(:empty) { margin-top: 14px; }
 .update-bar { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 12px; font-size: 12px; }
 .spin { animation: spin 1s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }

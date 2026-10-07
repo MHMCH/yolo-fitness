@@ -43,10 +43,12 @@ export function addMonths(date: string, months: number): string {
 export const seasonEnd = (start: string) => addMonths(start, 12)
 export const seasonLength = (start: string) => diffDays(start, seasonEnd(start))
 
-export function currentSeason<Season extends { starts_on: string }>(seasons: Season[], today: string): Season | null {
-  return [...seasons]
-    .sort((first, second) => second.starts_on.localeCompare(first.starts_on))
-    .find((season) => season.starts_on <= today && today < seasonEnd(season.starts_on)) ?? null
+export type Season = { name: string; starts_on: string }
+
+/** "Season 2026/27" for a season starting in autumn 2026. */
+export function seasonOf(start: string): Season {
+  const year = Number(start.slice(0, 4))
+  return { name: `Season ${year}/${String((year + 1) % 100).padStart(2, '0')}`, starts_on: start }
 }
 
 /** Cumulative sessions at the end of each day index 0..lastIndex. Dates outside the range are ignored. */
@@ -102,15 +104,6 @@ export function niceCeil(value: number): number {
 export function chartTop(options: { currentMax: number; refMax?: number; capFactor?: number; minScale?: number }): number {
   const { currentMax, refMax = 0, capFactor = 1.5, minScale = 5 } = options
   return niceCeil(Math.max(minScale, refMax * 1.05, currentMax * capFactor))
-}
-
-/** First day of the monthly period containing `today`; earlier days are locked. */
-export function currentPeriodStart(start: string, today: string): string {
-  for (let index = 11; index >= 0; index--) {
-    const candidate = addMonths(start, index)
-    if (candidate <= today) return candidate
-  }
-  return start
 }
 
 const monthName = new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', month: 'short' })

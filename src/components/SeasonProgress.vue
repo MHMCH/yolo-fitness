@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import LineChart from './LineChart.vue'
-import { addDays, cumulativeByDay, diffDays, monthTicks, seasonLength, type ChartSeries, type RefLine } from '../lib/seasonChart'
+import { addDays, cumulativeByDay, diffDays, monthTicks, seasonLength, type ChartSeries, type RefLine, type Season } from '../lib/seasonChart'
 import { displayDate } from '../lib/trainingDates'
-import type { Season } from '../types/database'
 
 const GOAL = 100
 const props = defineProps<{ season: Season; days: string[]; today: string; lastYear: number | null }>()

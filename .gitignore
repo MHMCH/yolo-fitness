@@ -7,3 +7,5 @@ dist/
 supabase/.temp/
 test-results/
 playwright-report/
+# Development-only overrides for a test project (account ids, earlier season start)
+src/config/local.ts

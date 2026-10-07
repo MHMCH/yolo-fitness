@@ -1,17 +1,13 @@
+import type { DailyPoints } from '../types/database'
+import type { LeaderboardRow } from './league'
 import { cumulativeFromCounts, type ChartSeries } from './seasonChart'
-import type { DailySeries, RankingRow } from '../types/database'
 
-export type { DailySeries, RankingRow }
 export type Rival = { id: string; role: 'chase' | 'defend'; color: string }
 
 const CHASE = ['#ffb454', '#ffd596']
 const DEFEND = ['#5ac8fa', '#a2dcf5']
 export const MUTED_COLOR = '#8a8c96'
 export const PICKED_COLOR = '#c8a2ff'
-
-export function orderRows(rows: RankingRow[]): RankingRow[] {
-  return [...rows].sort((first, second) => first.rank - second.rank || first.display_name.localeCompare(second.display_name))
-}
 
 /** The people directly above and below `me` in the ordered list; at either end, the two nearest on the other side. */
 export function pickRivals(order: string[], me: string): Rival[] {
@@ -27,17 +23,16 @@ export function pickRivals(order: string[], me: string): Rival[] {
 }
 
 /**
- * One cumulative line per person. You and your two rivals are coloured and extrapolated;
- * everyone else is a thin grey line. A tapped person (picked) is highlighted as well.
+ * One cumulative line per person. You and your direct rivals are coloured; everyone else is a thin grey line.
+ * A tapped person (picked) is highlighted as well. `rows` must already be in leaderboard order.
  */
-export function buildRankingSeries(rows: RankingRow[], daily: DailySeries[], me: string, picked: string | null,
+export function buildRankingSeries(rows: LeaderboardRow[], daily: DailyPoints[], me: string, picked: string | null,
   start: string, todayIndex: number): { series: ChartSeries[]; rivals: Rival[] } {
-  const ordered = orderRows(rows)
-  const rivals = pickRivals(ordered.map((row) => row.user_id), me)
+  const rivals = pickRivals(rows.map((row) => row.user_id), me)
   const byUser = new Map(daily.map((entry) => [entry.user_id, entry]))
-  const series = ordered.map((row): ChartSeries => {
+  const series = rows.map((row): ChartSeries => {
     const entry = byUser.get(row.user_id)
-    const values = cumulativeFromCounts(entry?.days ?? [], entry?.counts ?? [], start, todayIndex)
+    const values = cumulativeFromCounts(entry?.days ?? [], entry?.points ?? [], start, todayIndex)
     const base = { id: row.user_id, label: row.display_name, values }
     if (row.user_id === me) return { ...base, color: 'var(--pink)', width: 3, emphasis: true }
     const rival = rivals.find((candidate) => candidate.id === row.user_id)

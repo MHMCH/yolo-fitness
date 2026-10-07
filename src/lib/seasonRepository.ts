@@ -1,28 +1,16 @@
-import type { Season } from '../types/database'
-import { berlinDate } from './trainingDates'
-import { currentSeason, seasonEnd } from './seasonChart'
+import { seasonEnd } from './seasonChart'
 import { supabase } from './supabase'
 
 export interface SeasonRepository {
-  season(): Promise<Season | null>
-  /** The signed-in user's own session dates inside the season, ascending. */
-  ownDays(season: Season): Promise<string[]>
-}
-
-function client() {
-  if (!supabase) throw new Error('Supabase is not configured.')
-  return supabase
+  /** The signed-in user's own session dates in the twelve months from `start`, ascending. */
+  ownDays(start: string): Promise<string[]>
 }
 
 export const seasonRepository: SeasonRepository = {
-  async season() {
-    const { data, error } = await client().from('seasons').select('*')
-    if (error) throw error
-    return currentSeason(data, berlinDate())
-  },
-  async ownDays(season) {
-    const { data, error } = await client().from('training_sessions').select('trained_on')
-      .gte('trained_on', season.starts_on).lt('trained_on', seasonEnd(season.starts_on))
+  async ownDays(start) {
+    if (!supabase) throw new Error('Supabase is not configured.')
+    const { data, error } = await supabase.from('training_sessions').select('trained_on')
+      .gte('trained_on', start).lt('trained_on', seasonEnd(start))
       .order('trained_on', { ascending: true }).limit(1000)
     if (error) throw error
     return data.map((row) => row.trained_on)

@@ -1,15 +1,14 @@
 import { computed, onScopeDispose, ref } from 'vue'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
-import { loadProfile, saveProfile } from '../lib/profileRepository'
-import type { Profile } from '../types/database'
 
+/**
+ * Account state. The display name, last year's session count and the unlock flag live in the account's
+ * user metadata, which the signed-in user may edit; nothing here grants permissions.
+ */
 export function useAuth() {
   const user = ref<User | null>(null)
-  const profile = ref<Profile | null>(null)
   const loading = ref(Boolean(supabase))
-  const profileLoading = ref(false)
-  const profileFailed = ref(false)
   const busy = ref(false)
   const error = ref('')
   const preview = ref(false)
@@ -18,38 +17,19 @@ export function useAuth() {
   const previewUnlocked = ref(false)
   // Set when the unlock could not be saved, so the screens still appear on this device.
   const unlockedLocally = ref(false)
-  const displayName = computed(() => preview.value ? previewName.value : profile.value?.display_name ?? '')
-  const lastYearCount = computed(() => preview.value ? previewLastYear.value : profile.value?.last_year_count ?? null)
-  const featuresUnlocked = computed(() => preview.value ? previewUnlocked.value : Boolean(profile.value?.features_unlocked_at) || unlockedLocally.value)
-  const isAdmin = computed(() => preview.value || Boolean(profile.value?.is_admin))
+  const metadata = computed(() => (user.value?.user_metadata ?? {}) as Record<string, unknown>)
+  const displayName = computed(() => preview.value ? previewName.value : String(metadata.value.display_name ?? ''))
+  const lastYearCount = computed(() => {
+    if (preview.value) return previewLastYear.value
+    const stored = metadata.value.last_year_count
+    return typeof stored === 'number' && Number.isInteger(stored) && stored >= 0 ? stored : null
+  })
+  const featuresUnlocked = computed(() => preview.value ? previewUnlocked.value : Boolean(metadata.value.features_unlocked_at) || unlockedLocally.value)
   const identity = computed(() => preview.value ? 'local-preview' : user.value?.id ?? '')
 
-  async function fetchProfile(id: string) {
-    profileLoading.value = true
-    profileFailed.value = false
-    try {
-      const row = await loadProfile(id)
-      if (user.value?.id !== id) return
-      profile.value = row
-      if (!row) profileFailed.value = true
-    } catch {
-      if (user.value?.id === id) profileFailed.value = true
-    } finally { if (user.value?.id === id) profileLoading.value = false }
-  }
   function applyUser(next: User | null) {
-    const changed = next?.id !== user.value?.id
+    if (next?.id !== user.value?.id) unlockedLocally.value = false
     user.value = next
-    if (changed) unlockedLocally.value = false
-    if (!next) {
-      profile.value = null
-      profileLoading.value = false
-      profileFailed.value = false
-    } else if (changed) {
-      profile.value = null
-      profileLoading.value = true
-      // Supabase may hold its auth lock while this callback runs; defer the request.
-      setTimeout(() => { void fetchProfile(next.id) }, 0)
-    }
   }
   if (supabase) {
     const { data } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -58,8 +38,10 @@ export function useAuth() {
     })
     onScopeDispose(() => data.subscription.unsubscribe())
   }
-  function retryProfile() {
-    if (user.value) void fetchProfile(user.value.id)
+  async function updateMetadata(data: Record<string, unknown>) {
+    const { data: result, error: authError } = await supabase!.auth.updateUser({ data })
+    if (authError) throw authError
+    applyUser(result.user)
   }
   async function signIn(email: string, password: string) {
     if (!supabase || busy.value) return
@@ -77,27 +59,22 @@ export function useAuth() {
     const trimmed = name.trim().slice(0, 40)
     if (busy.value || !trimmed) return
     if (preview.value) { previewName.value = trimmed; return }
-    if (!user.value) return
+    if (!supabase || !user.value) return
     busy.value = true
     error.value = ''
-    try {
-      profile.value = await saveProfile(user.value.id, { display_name: trimmed })
-    } catch (failure) {
-      error.value = (failure as { code?: string })?.code === '23505'
-        ? 'That name is already taken. Please choose another.'
-        : 'Could not save your name. Please try again.'
-    } finally { busy.value = false }
+    try { await updateMetadata({ display_name: trimmed }) }
+    catch { error.value = 'Could not save your name. Please try again.' }
+    finally { busy.value = false }
   }
   async function setLastYearCount(count: number | null) {
     if (busy.value) return
     if (count !== null && (!Number.isInteger(count) || count < 0)) { error.value = 'Enter a whole number, 0 or more.'; return }
     if (preview.value) { previewLastYear.value = count; return }
-    if (!user.value) return
+    if (!supabase || !user.value) return
     busy.value = true
     error.value = ''
-    try {
-      profile.value = await saveProfile(user.value.id, { last_year_count: count })
-    } catch { error.value = 'Could not save last year\'s sessions. Please try again.' }
+    try { await updateMetadata({ last_year_count: count }) }
+    catch { error.value = 'Could not save last year\'s sessions. Please try again.' }
     finally { busy.value = false }
   }
   /** Remember that this account has seen the unlock celebration; failures keep it unlocked on this device only. */
@@ -105,11 +82,9 @@ export function useAuth() {
     if (featuresUnlocked.value) return
     if (preview.value) { previewUnlocked.value = true; return }
     const id = user.value?.id
-    if (!id) return
-    try {
-      const saved = await saveProfile(id, { features_unlocked_at: new Date().toISOString() })
-      if (user.value?.id === id) profile.value = saved
-    } catch { if (user.value?.id === id) unlockedLocally.value = true }
+    if (!supabase || !id) return
+    try { await updateMetadata({ features_unlocked_at: new Date().toISOString() }) }
+    catch { if (user.value?.id === id) unlockedLocally.value = true }
   }
   function relockPreview() { previewUnlocked.value = false }
   async function signOut() {
@@ -124,7 +99,7 @@ export function useAuth() {
     finally { busy.value = false }
   }
   return {
-    user, profile, loading, profileLoading, profileFailed, busy, error, preview, displayName, lastYearCount, isAdmin, identity, featuresUnlocked,
-    signIn, setName, setLastYearCount, retryProfile, unlockFeatures, relockPreview, signOut,
+    user, loading, busy, error, preview, displayName, lastYearCount, identity, featuresUnlocked,
+    signIn, setName, setLastYearCount, unlockFeatures, relockPreview, signOut,
   }
 }

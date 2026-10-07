@@ -1,17 +1,16 @@
-import { berlinDate, monthBounds } from './trainingDates'
+import type { AppConfig } from '../config'
 import { addDays, addMonths, seasonEnd } from './seasonChart'
-import type { RankingRepository } from './rankingRepository'
-import type { TeamsRepository } from './teamsRepository'
-import type { TeamAdminRepository } from './teamAdminRepository'
+import type { BoardRepository } from './boardRepository'
 import type { SeasonRepository } from './seasonRepository'
 import type { SessionRepository } from './sessionRepository'
-import type { DailySeries, RankingRow, TeamDaily, TeamMonthRow, TeamQuarterRow, TrainingSession } from '../types/database'
+import { berlinDate, monthBounds, quarterBounds } from './trainingDates'
+import type { DailyPoints, LeaderboardEntry, TrainingSession } from '../types/database'
 
 const earlierDaysAgo = [2, 3, 5, 6, 9, 10, 12, 15, 17, 18, 21, 24, 26, 30, 33, 35, 40, 44, 47]
 
-const demoPeople: Array<[string, number, number]> = [
-  ['Marco', 2.8, 120], ['Daniel', 1.2, 55], ['Jens', 1.9, 80], ['Jonas', 2.4, 96], ['Seba', 0.8, 30],
-  ['Philipp', 2.1, 90], ['Axel', 1.5, 64], ['Jörg', 1.0, 48], ['Tobi', 2.6, 110], ['Torben', 1.7, 70],
+const demoPeople: Array<[string, number]> = [
+  ['Marco', 2.8], ['Daniel', 1.2], ['Jens', 1.9], ['Jonas', 2.4], ['Seba', 0.8],
+  ['Philipp', 2.1], ['Axel', 1.5], ['Jörg', 1.0], ['Tobi', 2.6], ['Torben', 1.7],
 ]
 
 /** Small deterministic generator so the demo looks the same on every reload. */
@@ -20,9 +19,10 @@ function random(seed: number) {
   return () => { state = (state * 1664525 + 1013904223) % 4294967296; return state / 4294967296 }
 }
 
-export function createDemo(): { sessions: SessionRepository; season: SeasonRepository; ranking: RankingRepository; teams: TeamsRepository; teamAdmin: TeamAdminRepository } {
+export function createDemo(): { sessions: SessionRepository; season: SeasonRepository; boards: BoardRepository; config: AppConfig } {
   const today = berlinDate()
-  const seasonStart = addDays(today, -60)
+  // The demo season began two quarters ago, so two quarters are finished and have a champion.
+  const seasonStart = addMonths(quarterBounds(today).start, -6)
   const rows: TrainingSession[] = [
     ...Array.from({ length: 12 }, (_, index) => ({
       id: crypto.randomUUID(), user_id: 'local-preview',
@@ -55,110 +55,45 @@ export function createDemo(): { sessions: SessionRepository; season: SeasonRepos
       if (index >= 0) rows.splice(index, 1)
     },
   }
-  const season: SeasonRepository = {
-    async season() { return { id: 1, name: 'Demo season', starts_on: seasonStart } },
-    async ownDays(active) {
-      const end = seasonEnd(active.starts_on)
-      return rows.map((row) => row.trained_on).filter((day) => day >= active.starts_on && day < end).sort()
-    },
+  const ownDays = (start: string) => {
+    const end = seasonEnd(start)
+    return rows.map((row) => row.trained_on).filter((day) => day >= start && day < end).sort()
   }
-  const people = demoPeople.map(([name, rate, lastYear], index) => {
+  const season: SeasonRepository = { async ownDays(start) { return ownDays(start) } }
+
+  const people = demoPeople.map(([name, rate], index) => {
     const next = random(index + 7)
     const days: string[] = []
-    for (let offset = 0; offset <= 60; offset++) {
+    for (let offset = 0; addDays(seasonStart, offset) <= today; offset++) {
       const day = addDays(seasonStart, offset)
       const weekend = [0, 6].includes(new Date(`${day}T12:00:00Z`).getUTCDay())
       if (next() < (rate / 7) * (weekend ? 1.35 : 0.93)) days.push(day)
     }
-    return { id: `demo-${index}`, name, lastYear, days }
+    return { id: `demo-${index}`, name, days }
   })
-  const seasonDays = () => {
-    const end = seasonEnd(seasonStart)
-    return rows.map((row) => row.trained_on).filter((day) => day >= seasonStart && day < end).sort()
-  }
-  const everyone = () => [
-    { id: 'local-preview', name: 'Alex', lastYear: 40, days: seasonDays() },
-    ...people,
-  ]
-  const ranking: RankingRepository = {
-    async ranking() {
-      const counted = everyone().map((person) => ({ user_id: person.id, display_name: person.name, sessions: person.days.length, last_year_count: person.lastYear }))
-      const distinct = [...new Set(counted.map((entry) => entry.sessions))].sort((first, second) => second - first)
-      return counted.map((entry): RankingRow => ({ ...entry, rank: distinct.indexOf(entry.sessions) + 1 }))
+  const everyone = () => [{ id: 'local-preview', name: 'Alex', days: ownDays(seasonStart) }, ...people]
+  const boards: BoardRepository = {
+    async leaderboard() {
+      return everyone().map((person): LeaderboardEntry => ({ user_id: person.id, display_name: person.name, total_points: person.days.length, points_before_today: 0 }))
     },
-    async daily() {
-      return everyone().map((person): DailySeries => {
+    async dailyPoints(from, to) {
+      return everyone().map((person): DailyPoints => {
         const perDay = new Map<string, number>()
-        for (const day of person.days) perDay.set(day, (perDay.get(day) ?? 0) + 1)
+        for (const day of person.days) if (day >= from && day < to) perDay.set(day, (perDay.get(day) ?? 0) + 1)
         const days = [...perDay.keys()].sort()
-        return { user_id: person.id, days, counts: days.map((day) => perDay.get(day)!) }
+        return { user_id: person.id, days, points: days.map((day) => perDay.get(day)!) }
       })
     },
   }
-  // Quarter 1 has five teams; the other quarters have none, to show the empty state.
-  const teamDefsByQuarter = new Map<number, string[][]>([[1, [['Alex', 'Marco'], ['Daniel', 'Jens'], ['Jonas', 'Seba', 'Philipp'], ['Axel', 'Jörg'], ['Tobi', 'Torben']]]])
-  const denseRank = (values: number[], value: number) => [...new Set(values.map((entry) => Math.round(entry * 1e9)))].sort((a, b) => b - a).indexOf(Math.round(value * 1e9)) + 1
-  function monthRows(quarter: number, month: number): TeamMonthRow[] {
-    const teamDefs = teamDefsByQuarter.get(quarter) ?? []
-    if (!teamDefs.length) return []
-    const lo = addMonths(seasonStart, (quarter - 1) * 3 + month - 1)
-    const hi = addMonths(seasonStart, (quarter - 1) * 3 + month)
-    const byName = new Map(everyone().map((person) => [person.name, person.days]))
-    const raw = teamDefs.map((members, index) => {
-      const sessions = members.flatMap((name) => byName.get(name) ?? []).filter((day) => day >= lo && day < hi).length
-      return { members, slot: index + 1, sessions, average: sessions / members.length }
-    })
-    const averages = raw.map((entry) => entry.average)
-    return raw.map((entry): TeamMonthRow => {
-      const rank = denseRank(averages, entry.average)
-      const closed = today >= hi
-      return { team_id: `demo-team-${entry.slot}`, slot: entry.slot, members: [...entry.members].sort(), member_count: entry.members.length,
-        sessions: entry.sessions, average: entry.average, rank, bonus: closed && rank <= 3 ? 4 - rank : null, started: today >= lo, closed }
-    }).sort((a, b) => a.rank - b.rank || a.slot - b.slot)
-  }
-  const teams: TeamsRepository = {
-    async month(quarter, month) { return monthRows(quarter, month) },
-    async daily(quarter, month) {
-      const teamDefs = teamDefsByQuarter.get(quarter) ?? []
-      const lo = addMonths(seasonStart, (quarter - 1) * 3 + month - 1)
-      const hi = addMonths(seasonStart, (quarter - 1) * 3 + month)
-      const byName = new Map(everyone().map((person) => [person.name, person.days]))
-      return teamDefs.map((members, index): TeamDaily => {
-        const perDay = new Map<string, number>()
-        for (const day of members.flatMap((name) => byName.get(name) ?? [])) if (day >= lo && day < hi) perDay.set(day, (perDay.get(day) ?? 0) + 1)
-        const days = [...perDay.keys()].sort()
-        return { team_id: `demo-team-${index + 1}`, slot: index + 1, days, counts: days.map((day) => perDay.get(day)!) }
-      })
-    },
-    async quarter(quarter) {
-      const teamDefs = teamDefsByQuarter.get(quarter) ?? []
-      if (!teamDefs.length) return []
-      const perMonth = [1, 2, 3].map((month) => monthRows(quarter, month))
-      const rows = teamDefs.map((members, index) => {
-        const entries = perMonth.map((list) => list.find((row) => row.slot === index + 1)!)
-        return { team_id: `demo-team-${index + 1}`, slot: index + 1, members: [...members].sort(), member_count: members.length,
-          scores: entries.map((entry) => entry.started ? entry.average : null), bonuses: entries.map((entry) => entry.bonus),
-          total: entries.reduce((sum, entry) => sum + (entry.started ? entry.average + (entry.bonus ?? 0) : 0), 0) }
-      })
-      const totals = rows.map((row) => row.total)
-      return rows.map((row): TeamQuarterRow => ({ ...row, rank: denseRank(totals, row.total) })).sort((a, b) => a.rank - b.rank || a.slot - b.slot)
-    },
-  }
-  const teamAdmin: TeamAdminRepository = {
-    async people() { return everyone().map((person) => ({ id: person.id, name: person.name })) },
-    async assignments(_season, quarter) {
-      const result: Record<string, number | null> = {}
-      for (const [index, members] of (teamDefsByQuarter.get(quarter) ?? []).entries()) {
-        for (const name of members) result[everyone().find((person) => person.name === name)!.id] = index + 1
-      }
-      return result
-    },
-    async save(quarter, lists) {
-      const nameOf = new Map(everyone().map((person) => [person.id, person.name]))
-      teamDefsByQuarter.set(quarter, lists.map((ids) => ids.map((id) => nameOf.get(id)!)))
-    },
-  }
-  return { sessions, season, ranking, teams, teamAdmin }
-}
 
-export const createDemoRepository = () => createDemo().sessions
+  // Five teams per quarter from the same eleven people, shuffled differently each quarter.
+  const ids = ['local-preview', ...people.map((person) => person.id)]
+  const league: AppConfig['league'] = {}
+  for (let start = seasonStart, quarter = 0; start <= today; start = addMonths(start, 3), quarter++) {
+    const order = ids.map((_, index) => ids[(index * (quarter + 2) + quarter) % ids.length])
+    const unique = [...new Set(order)]
+    const shuffled = unique.length === ids.length ? unique : ids
+    league[quarterBounds(start).key] = [shuffled.slice(0, 3), shuffled.slice(3, 5), shuffled.slice(5, 7), shuffled.slice(7, 9), shuffled.slice(9, 11)]
+  }
+  return { sessions, season, boards, config: { seasonStart, league } }
+}

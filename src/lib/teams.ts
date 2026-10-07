@@ -1,39 +1,70 @@
-import { addMonths, cumulativeFromCounts, diffDays, type ChartSeries, type Tick } from './seasonChart'
-import type { TeamDaily, TeamMonthRow } from '../types/database'
-
-/** Distinct on the dark background; a team keeps its colour for its slot. */
-export const TEAM_COLORS = ['#ffb454', '#5ac8fa', '#8fdab3', '#c8a2ff', '#ff7a59', '#e8e35a', '#3fd0c9', '#7a8cff']
-export const teamColor = (slot: number) => TEAM_COLORS[(slot - 1) % TEAM_COLORS.length]
+import type { LeagueConfig } from '../config/league'
+import type { DailyPoints, MonthlyPoints } from '../types/database'
+import { monthStandings, quarterStart, rankWithTies } from './league'
+import { cumulativeFromCounts, diffDays, type ChartSeries, type Tick } from './seasonChart'
+import { isMonthClosed, monthBounds, quarterBounds } from './trainingDates'
 
 // Temporary: set to true to draw the dashed pace extrapolation on running months.
 export const SHOW_TEAM_PROJECTION = false
 
-export type MonthRange = { lo: string; hi: string; length: number }
-export type MonthChoice = 1 | 2 | 3
+/** Distinct on the dark background; a team keeps its colour for its position in the configuration. */
+export const TEAM_COLORS = ['#ffb454', '#5ac8fa', '#8fdab3', '#c8a2ff', '#ff7a59', '#e8e35a', '#3fd0c9', '#7a8cff']
+export const teamColor = (slot: number) => TEAM_COLORS[(slot - 1) % TEAM_COLORS.length]
 
-/** The monthly period `month` (1-3) of `quarter` (1-4): first day, first day after it, and its length in days. */
-export function monthRange(seasonStart: string, quarter: number, month: number): MonthRange {
-  const index = (quarter - 1) * 3 + month - 1
-  const lo = addMonths(seasonStart, index)
-  const hi = addMonths(seasonStart, index + 1)
+export type MonthRange = { lo: string; hi: string; length: number }
+
+/** The calendar month `index` (0-2) of a quarter key such as `2026-Q4`. */
+export function monthRange(key: string, index: number): MonthRange {
+  const lo = quarterBounds(quarterStart(key)).months[index]
+  const hi = monthBounds(lo).end
   return { lo, hi, length: diffDays(lo, hi) }
 }
 
-/** Quarter and month containing `today`, or null outside the season. */
-export function currentSelection(seasonStart: string, today: string): { quarter: number; month: MonthChoice } | null {
-  if (today < seasonStart || today >= addMonths(seasonStart, 12)) return null
-  for (let index = 11; index >= 0; index--) {
-    if (addMonths(seasonStart, index) <= today) return { quarter: Math.floor(index / 3) + 1, month: ((index % 3) + 1) as MonthChoice }
-  }
-  return null
+const monthName = new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', month: 'short' })
+export const monthLabel = (key: string, index: number) => monthName.format(new Date(`${monthRange(key, index).lo}T12:00:00Z`))
+
+/** Quarters that have teams, oldest first. */
+export const quarterKeys = (league: LeagueConfig) => Object.keys(league).filter((key) => league[key].length).sort()
+
+/** Quarter and month to show first: the running one, else the latest started quarter, else the first. */
+export function defaultSelection(keys: string[], today: string): { key: string; month: number } {
+  const current = quarterBounds(today)
+  if (keys.includes(current.key)) return { key: current.key, month: current.months.filter((month) => month <= today).length - 1 }
+  const started = keys.filter((key) => quarterStart(key) <= today)
+  if (started.length) return { key: started[started.length - 1], month: 2 }
+  return { key: keys[0] ?? current.key, month: 0 }
 }
 
-const monthName = new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', month: 'short' })
-export const monthLabel = (seasonStart: string, quarter: number, month: number) =>
-  monthName.format(new Date(`${monthRange(seasonStart, quarter, month).lo}T12:00:00Z`))
+export type MonthRow = { team: string[]; slot: number; average: number; rank: number; bonus: number; started: boolean; closed: boolean }
 
-export function quarterLabel(seasonStart: string, quarter: number) {
-  return `${monthLabel(seasonStart, quarter, 1)}–${monthLabel(seasonStart, quarter, 3)}`
+/** Standings of one month. While the month runs the bonus is what the team would get if it ended now. */
+export function monthRows(teams: string[][], monthly: MonthlyPoints[], range: MonthRange, today: string): MonthRow[] {
+  const points = new Map(monthly.filter((row) => row.month === range.lo).map((row) => [row.user_id, row.points]))
+  const started = range.lo <= today
+  const closed = isMonthClosed(range.lo, today)
+  return monthStandings(teams, points)
+    .map((standing, index): MonthRow => ({ team: teams[index], slot: index + 1, ...standing, started, closed }))
+    .sort((first, second) => first.rank - second.rank || first.slot - second.slot)
+}
+
+export type TotalRow = { team: string[]; slot: number; months: Array<number | null>; liveMonth: number | null; total: number; rank: number }
+
+const round = (value: number) => Math.round(value * 1e6) / 1e6
+
+/** Quarter totals: closed months count with bonus, the running month without it, later months not at all. */
+export function totalRows(teams: string[][], monthly: MonthlyPoints[], key: string, today: string): TotalRow[] {
+  const perMonth = [0, 1, 2].map((index) => monthRows(teams, monthly, monthRange(key, index), today))
+  const live = perMonth.findIndex((rows) => rows[0]?.started && !rows[0].closed)
+  const rows = teams.map((team, index) => {
+    const results = perMonth.map((rows) => {
+      const row = rows.find((entry) => entry.slot === index + 1)!
+      return row.started ? round(row.average + (row.closed ? row.bonus : 0)) : null
+    })
+    return { team, slot: index + 1, months: results, liveMonth: live < 0 ? null : live, total: round(results.reduce<number>((sum, value) => sum + (value ?? 0), 0)) }
+  })
+  const ranks = rankWithTies(rows.map((row) => row.total))
+  return rows.map((row, index) => ({ ...row, rank: ranks[index] }))
+    .sort((first, second) => first.rank - second.rank || first.slot - second.slot)
 }
 
 /** Weekly labels under a month chart: "1 Oct", 8, 15, 22, 29. */
@@ -51,20 +82,26 @@ export function ordinal(place: number): string {
 }
 
 /**
- * One cumulative per-head line per team for a month. A running month ends today and is extrapolated;
- * a closed month shows its final result (score plus bonus) at the end of the line.
+ * One cumulative per-head line per team for a month. A running month ends today; a closed month shows the
+ * final result (average plus bonus) at the end of its line.
  */
-export function buildTeamSeries(rows: TeamMonthRow[], daily: TeamDaily[], range: MonthRange, today: string, myName: string): ChartSeries[] {
-  const byTeam = new Map(daily.map((entry) => [entry.team_id, entry]))
+export function buildTeamSeries(rows: MonthRow[], daily: DailyPoints[], range: MonthRange, today: string, myId: string,
+  label: (team: string[]) => string): ChartSeries[] {
+  const byUser = new Map(daily.map((entry) => [entry.user_id, entry]))
   return rows.filter((row) => row.started).map((row): ChartSeries => {
     const lastIndex = row.closed ? range.length - 1 : Math.min(range.length - 1, Math.max(0, diffDays(range.lo, today)))
-    const entry = byTeam.get(row.team_id)
-    const values = cumulativeFromCounts(entry?.days ?? [], entry?.counts ?? [], range.lo, lastIndex).map((total) => total / row.member_count)
-    const mine = row.members.includes(myName)
+    const days: string[] = []
+    const counts: number[] = []
+    for (const id of row.team) {
+      const entry = byUser.get(id)
+      entry?.days.forEach((day, index) => { days.push(day); counts.push(entry.points[index] ?? 0) })
+    }
+    const values = cumulativeFromCounts(days, counts, range.lo, lastIndex).map((total) => total / Math.max(row.team.length, 1))
+    const mine = row.team.includes(myId)
     return {
-      id: row.team_id, label: row.members.join(' + '), color: teamColor(row.slot), values,
+      id: String(row.slot), label: label(row.team), color: teamColor(row.slot), values,
       width: mine ? 3.5 : 2, emphasis: mine,
-      ...(row.closed ? { endText: formatScore(row.average + (row.bonus ?? 0)) } : { projection: SHOW_TEAM_PROJECTION, endLabel: true }),
+      ...(row.closed ? { endText: formatScore(row.average + row.bonus) } : { projection: SHOW_TEAM_PROJECTION, endLabel: true }),
     }
   })
 }

@@ -94,7 +94,7 @@ onBeforeUnmount(() => {
       <h2 id="celebration-title">Congrats, Buddy!</h2>
       <p>You just earned some new features!</p>
       <ul class="unlocked">
-        <li>Season chart</li><li>Ranking</li><li>Teams</li>
+        <li>Season chart</li><li>Leaderboard</li><li>League</li>
       </ul>
       <button ref="button" class="primary" @click="emit('close')">Show me</button>
     </div>
