@@ -65,17 +65,31 @@ create policy profiles_select on public.profiles for select to authenticated usi
 create policy profiles_update_own on public.profiles for update to authenticated
   using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
 
-insert into public.profiles (user_id, display_name)
-select id, nullif(left(btrim(coalesce(raw_user_meta_data ->> 'display_name', '')), 40), '')
-from auth.users
-on conflict do nothing;
+-- Every existing account gets a profile. Names are copied from the user metadata (read-only);
+-- if two accounts share a name (ignoring case), only the earliest keeps it and the other
+-- starts without a name instead of losing its profile.
+insert into public.profiles (user_id) select id from auth.users on conflict do nothing;
+
+update public.profiles p set display_name = n.name
+from (
+  select id, name, row_number() over (partition by lower(name) order by created_at, id) as position
+  from (
+    select id, created_at, nullif(left(btrim(coalesce(raw_user_meta_data ->> 'display_name', '')), 40), '') as name
+    from auth.users
+  ) named
+  where name is not null
+) n
+where p.user_id = n.id and n.position = 1;
 
 create function public.handle_new_user() returns trigger
 language plpgsql security definer set search_path = '' as $$
 begin
   insert into public.profiles (user_id, display_name)
-  values (new.id, nullif(left(btrim(coalesce(new.raw_user_meta_data ->> 'display_name', '')), 40), ''))
-  on conflict do nothing;
+  values (new.id, nullif(left(btrim(coalesce(new.raw_user_meta_data ->> 'display_name', '')), 40), ''));
+  return new;
+exception when unique_violation then
+  -- A taken name must never prevent account creation; the user is asked for a name instead.
+  insert into public.profiles (user_id) values (new.id) on conflict do nothing;
   return new;
 end;
 $$;
