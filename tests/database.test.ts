@@ -6,7 +6,6 @@ describe('PostgreSQL migration and ownership enforcement', () => {
   let database: PGlite
   const owner = '11111111-1111-4111-8111-111111111111'
   const friend = '22222222-2222-4222-8222-222222222222'
-  const banned = '33333333-3333-4333-8333-333333333333'
   const firstEntry = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
   beforeAll(async () => {
     database = new PGlite()
@@ -14,20 +13,14 @@ describe('PostgreSQL migration and ownership enforcement', () => {
       create role anon;
       create role authenticated;
       create schema auth;
-      create table auth.users (id uuid primary key, email text, raw_user_meta_data jsonb not null default '{}',
-        banned_until timestamptz, deleted_at timestamptz);
+      create table auth.users (id uuid primary key);
       create function auth.uid() returns uuid language sql stable as
         $$select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid$$;
       grant usage on schema auth to authenticated;
       grant execute on function auth.uid() to authenticated;
-      insert into auth.users (id, email, raw_user_meta_data, banned_until) values
-        ('${owner}', 'owner@example.com', '{"display_name": "Owner"}', null),
-        ('${friend}', 'friend@example.com', '{"display_name": "Friend"}', null),
-        ('${banned}', 'banned@example.com', '{"display_name": "Banned"}', now() + interval '1 day');
+      insert into auth.users values ('${owner}'), ('${friend}');
     `)
-    for (const migration of ['202610040001_training.sql', '202610060001_leaderboard.sql']) {
-      await database.exec(await readFile(new URL(`../supabase/migrations/${migration}`, import.meta.url), 'utf8'))
-    }
+    await database.exec(await readFile(new URL('../supabase/migrations/202610040001_training.sql', import.meta.url), 'utf8'))
   }, 30_000)
   afterAll(async () => { await database?.close() })
   async function asUser(role: 'anon' | 'authenticated', identity: string, query: string) {
@@ -81,28 +74,5 @@ describe('PostgreSQL migration and ownership enforcement', () => {
   it('allows the owner to delete and recalculates counts', async () => {
     expect((await asUser('authenticated', owner, `delete from public.training_sessions where id = '${firstEntry}' returning id`)).rows).toEqual([{ id: firstEntry }])
     expect((await asUser('authenticated', owner, 'select month_count, total_count from public.training_summary()')).rows).toEqual([{ month_count: 1, total_count: 2 }])
-  })
-  it('denies anonymous leaderboard and monthly point calls', async () => {
-    for (const query of ['select * from public.leaderboard()', `select * from public.monthly_points('2020-01-01', '2020-02-01')`]) {
-      await expect(asUser('anon', '', query)).rejects.toMatchObject({ code: '42501' })
-    }
-  })
-  it('leaderboard exposes only aggregates and names of active accounts', async () => {
-    const result = await asUser('authenticated', friend, 'select * from public.leaderboard() order by display_name')
-    expect(result.fields.map((field) => field.name)).toEqual(['user_id', 'display_name', 'total_points', 'points_before_today'])
-    expect(result.rows).toEqual([
-      { user_id: friend, display_name: 'Friend', total_points: 0, points_before_today: 0 },
-      { user_id: owner, display_name: 'Owner', total_points: 2, points_before_today: 1 },
-    ])
-  })
-  it('returns monthly point aggregates for a bounded range', async () => {
-    const result = await asUser('authenticated', friend, `select user_id, month::text, points from public.monthly_points('2020-01-01', '2020-02-01')`)
-    expect(result.rows).toEqual([{ user_id: owner, month: '2020-01-01', points: 1 }])
-    for (const range of [`'2020-02-01', '2020-01-01'`, `'2020-01-01', '2021-06-01'`, `null, '2020-01-01'`]) {
-      await expect(asUser('authenticated', friend, `select * from public.monthly_points(${range})`)).rejects.toMatchObject({ code: '22023' })
-    }
-  })
-  it('still hides individual sessions from other accounts', async () => {
-    expect((await asUser('authenticated', friend, 'select * from public.training_sessions')).rows).toEqual([])
   })
 })
