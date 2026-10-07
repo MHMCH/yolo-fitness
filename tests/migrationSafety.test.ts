@@ -81,4 +81,18 @@ describe('upgrading an existing database with the season migration', () => {
     await database.query(`insert into auth.users (id, raw_user_meta_data) values ($1, '{"display_name":"ANNA"}')`, [id])
     expect((await database.query('select display_name from public.profiles where user_id = $1', [id])).rows).toEqual([{ display_name: null }])
   })
+  it('can be rolled back without touching sessions or accounts', async () => {
+    await database.query('delete from auth.users where id = $1', ['44444444-4444-4444-8444-444444444444'])
+    await database.exec(await readFile(new URL('../supabase/rollback/202610070001_season_down.sql', import.meta.url), 'utf8'))
+    expect(await snapshot()).toEqual(before)
+    const left = (await database.query<{ name: string }>(
+      `select table_name as name from information_schema.tables where table_schema = 'public' order by 1`)).rows.map((row) => row.name)
+    expect(left).toEqual(['training_sessions'])
+    expect((await database.query(`select count(*)::int as n from pg_proc where proname in ('season_ranking', 'handle_new_user', 'enforce_open_month')`)).rows).toEqual([{ n: 0 }])
+    // The original behaviour works again: a client can backdate freely and the summary function still answers.
+    await database.exec(`set role authenticated; set request.jwt.claim.sub = '${users[0].id}';`)
+    await database.exec(`insert into public.training_sessions(id, trained_on) values ('a0000000-0000-4000-8000-000000000009', date '2026-01-01')`)
+    expect((await database.query('select total_count::int as n from public.training_summary()')).rows).toEqual([{ n: 3 }])
+    await database.exec('reset role; reset request.jwt.claim.sub;')
+  })
 })
