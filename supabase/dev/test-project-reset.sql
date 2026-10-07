@@ -1,8 +1,8 @@
--- Undo 202610070001_season.sql. Run it in the SQL editor only if you need to back the season feature out.
--- It removes the objects that migration created. training_sessions rows and auth.users are not touched,
--- but everything stored in the new tables is lost: display names in profiles, last_year_count, is_admin,
--- seasons, teams and team memberships. Afterwards deploy a frontend from before the season feature
--- (it reads display names from the user metadata, which this migration never changed).
+-- DEVELOPMENT ONLY, for a TEST project that ran the earlier season/profiles/teams migrations
+-- (replaced by the league design). Removes every object those migrations created. Nothing in
+-- training_sessions or auth.users is touched, but profiles, seasons, teams and the unlock flags are dropped.
+-- Afterwards run, in order: 202610060001_leaderboard.sql, 202610070001_month_lock_and_daily_points.sql.
+-- Never run this on production: production never had these objects.
 begin;
 drop trigger if exists training_sessions_open_month on public.training_sessions;
 drop trigger if exists on_auth_user_created on auth.users;
