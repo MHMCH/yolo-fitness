@@ -52,8 +52,10 @@ const bonusCountdown = computed(() => {
 })
 const summary = computed(() => rows.value.map((row) => `${row.rank}. ${props.teamName(row.team)}, ${formatScore(row.average)}`).join('; '))
 const totalMax = computed(() => Math.max(1, ...totals.value.map((row) => row.total)))
-const segments = (row: (typeof totals.value)[number]) => row.months.map((value, index) => ({ index, value: value ?? 0, live: row.liveMonth === index }))
+const segments = (row: (typeof totals.value)[number]) => row.months
+  .map((value, index) => ({ index, value: value ?? 0, live: row.liveMonth === index, share: ((value ?? 0) / totalMax.value) * 100 }))
   .filter((segment) => segment.value > 0)
+const monthOrder = computed(() => key.value ? [0, 1, 2].map((index) => monthLabel(key.value, index)).join(' · ') : '')
 const hasTeams = computed(() => keys.value.length > 0)
 const canCopy = computed(() => props.loaded && !props.loading && !props.error && !copying.value && rows.value.length + totals.value.length > 0)
 function copyLeague() {
@@ -135,11 +137,13 @@ function copyLeague() {
           <span class="team-score"><strong>{{ formatScore(row.total) }}</strong></span>
           <span class="stack" :aria-label="`Months: ${segments(row).map((segment) => formatScore(segment.value)).join(', ')}`">
             <span v-for="segment in segments(row)" :key="segment.index" class="stack-part" :class="{ live: segment.live }"
-              :style="{ width: `${(segment.value / totalMax) * 100}%`, background: teamColor(row.slot) }" :title="`${monthLabel(key, segment.index)}: ${formatScore(segment.value)}`"></span>
+              :style="{ width: `${segment.share}%`, '--team': teamColor(row.slot) }" :title="`${monthLabel(key, segment.index)}: ${formatScore(segment.value)}`">
+              <span v-if="segment.share >= 5" class="stack-value">{{ formatScore(segment.value) }}</span>
+            </span>
           </span>
         </li>
       </ol>
-      <p class="muted small rank-hint">Bar: one segment per month, the lighter one is the month still running. Small medals: the places a team reached in closed months.</p>
+      <p class="muted small rank-hint">Bar segments, left to right: {{ monthOrder }}. Each shows that month's result; the lighter one is the month still running. Small medals: the places a team reached in closed months.</p>
     </template>
   </template>
   <p v-if="error" class="feedback error board-error" role="alert">{{ error }}</p>

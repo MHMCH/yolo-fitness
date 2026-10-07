@@ -133,9 +133,12 @@ input { color: var(--text); background: var(--surface); border: 1px solid #37394
 .team-chip { width: 8px; height: 8px; border-radius: 50%; }
 .team-names { min-width: 0; overflow-wrap: anywhere; }
 .team-score { display: flex; flex-direction: column; align-items: flex-end; font-variant-numeric: tabular-nums; }
-.total-row .stack { grid-column: 2 / -1; display: flex; height: 6px; background: #23252b; border-radius: 3px; overflow: hidden; gap: 1px; }
-.stack-part { height: 100%; }
-.stack-part.live { opacity: .45; }
+.total-row .stack { grid-column: 2 / -1; display: flex; height: 18px; background: #23252b; border-radius: 4px; overflow: hidden; gap: 2px; }
+.stack-part { position: relative; height: 100%; display: grid; place-items: center; font-size: 10px; font-weight: 700; font-variant-numeric: tabular-nums; color: #14151a; }
+.stack-part::before { content: ''; position: absolute; inset: 0; background: var(--team); }
+.stack-part.live::before { opacity: .4; }
+.stack-part.live { color: var(--text); }
+.stack-value { position: relative; }
 .admin-link { margin-top: 20px; display: flex; }
 .admin-link + .signout { margin-top: 12px; }
 .admin-warning { margin-top: 14px; color: #efb87e; }
