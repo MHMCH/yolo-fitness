@@ -5,7 +5,7 @@ import LineChart from './LineChart.vue'
 import { useClipboard } from '../composables/useClipboard'
 import { leaderboardText, type LeaderboardRow } from '../lib/league'
 import { AHEAD_COLOR, BEHIND_COLOR, buildRankingSeries, MUTED_COLOR, PICKED_COLOR } from '../lib/ranking'
-import { addDays, diffDays, monthTicks, seasonLength, type RefLine, type Season } from '../lib/seasonChart'
+import { addDays, diffDays, monthTicks, seasonLength, weekTicks, type RefLine, type Season } from '../lib/seasonChart'
 import { displayDate } from '../lib/trainingDates'
 import type { DailyPoints } from '../types/database'
 
@@ -22,6 +22,7 @@ const built = computed(() => props.rows.length
   : { series: [], rivals: [] })
 const refLines: RefLine[] = [{ value: GOAL, label: `Goal ${GOAL}`, color: 'var(--green)' }]
 const ticks = computed(() => monthTicks(props.season.starts_on))
+const weekly = computed(() => weekTicks(props.season.starts_on, length.value))
 const dateLabel = (index: number) => displayDate(addDays(props.season.starts_on, index))
 const scaleMax = computed(() => Math.max(GOAL, ...props.rows.map((row) => row.total_points)))
 const places = ['', 'First place', 'Second place', 'Third place']
@@ -49,7 +50,7 @@ const canCopy = computed(() => props.loaded && !props.loading && !props.error &&
   <p v-if="loading && !loaded" class="empty muted"><LoaderCircle class="spin" :size="20" aria-label="Loading leaderboard" /></p>
   <template v-else-if="loaded">
     <div class="ranking-chart">
-      <LineChart :days="length" :series="built.series" :ref-lines="refLines" :ticks="ticks" :date-label="dateLabel" :summary="summary"
+      <LineChart :days="length" :series="built.series" :ref-lines="refLines" :ticks="ticks" :week-ticks="weekly" :date-label="dateLabel" :summary="summary"
         :min-scale="10" zoom :format-value="(value) => String(Math.round(value))" />
     </div>
     <ol class="rank-list">

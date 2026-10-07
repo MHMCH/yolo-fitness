@@ -116,8 +116,19 @@ export function monthTicks(start: string): Tick[] {
   })
 }
 
+/** Weekly labels for a short axis: "1 Oct", 8, 15, 22, 29, "5 Nov", ... */
+export function weekTicks(start: string, totalDays: number): Tick[] {
+  const ticks: Tick[] = []
+  for (let index = 0; index < totalDays; index += 7) {
+    const date = addDays(start, index)
+    const day = Number(date.slice(8, 10))
+    ticks.push({ index, label: index === 0 || day <= 7 ? `${day} ${monthName.format(new Date(`${date}T12:00:00Z`))}` : String(day) })
+  }
+  return ticks
+}
+
 /** Number of days the x-axis shows: up to today plus a margin, at least `minDays`, at most the whole period. */
-export function visibleDays(todayIndex: number, totalDays: number, minDays = 28): number {
+export function visibleDays(todayIndex: number, totalDays: number, minDays = 14): number {
   const used = todayIndex + 1
   const margin = Math.max(3, Math.round(used * 0.12))
   return Math.min(totalDays, Math.max(minDays, used + margin))

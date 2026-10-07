@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  addDays, addMonths, chartTop, cumulativeByDay, diffDays, niceCeil, recentPaceProjection, monthTicks, visibleDays, seasonEnd, seasonLength, seasonOf,
+  addDays, addMonths, chartTop, cumulativeByDay, diffDays, niceCeil, recentPaceProjection, monthTicks, weekTicks, visibleDays, seasonEnd, seasonLength, seasonOf,
 } from '../src/lib/seasonChart'
 
 describe('season calendar helpers', () => {
@@ -28,13 +28,18 @@ describe('season calendar helpers', () => {
     expect(ticks).toHaveLength(12)
     expect(ticks[1].index).toBe(31)
   })
+  it('labels weeks on a short axis, with the month at the start of each month', () => {
+    expect(weekTicks('2026-10-01', 60).map((tick) => tick.label)).toEqual(['1 Oct', '8', '15', '22', '29', '5 Nov', '12', '19', '26'])
+    expect(weekTicks('2026-10-01', 15).map((tick) => tick.index)).toEqual([0, 7, 14])
+  })
   it('zooms the x-axis to the days so far, plus a margin', () => {
-    expect(visibleDays(0, 365)).toBe(28)
-    expect(visibleDays(6, 365)).toBe(28)
+    expect(visibleDays(0, 365)).toBe(14)
+    expect(visibleDays(6, 365)).toBe(14)
+    expect(visibleDays(20, 365)).toBe(24)
     expect(visibleDays(66, 365)).toBe(75)
     expect(visibleDays(200, 365)).toBe(225)
     expect(visibleDays(360, 365)).toBe(365)
-    expect(visibleDays(10, 20)).toBe(20)
+    expect(visibleDays(10, 12)).toBe(12)
     expect(visibleDays(2, 31, 7)).toBe(7)
     expect(visibleDays(15, 31, 7)).toBe(19)
     expect(visibleDays(30, 31, 7)).toBe(31)

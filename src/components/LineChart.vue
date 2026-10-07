@@ -7,6 +7,8 @@ const props = defineProps<{
   series: ChartSeries[]
   refLines?: RefLine[]
   ticks?: Tick[]
+  /** Labels used instead of `ticks` while the axis is short (60 days or fewer). */
+  weekTicks?: Tick[]
   summary: string
   dateLabel: (index: number) => string
   formatValue?: (value: number) => string
@@ -14,7 +16,7 @@ const props = defineProps<{
   capFactor?: number
   /** Show only the days up to today (plus margin) instead of the whole period. */
   zoom?: boolean
-  /** Smallest number of days the zoomed axis shows (default 28). */
+  /** Smallest number of days the zoomed axis shows (default 14). */
   minDays?: number
 }>()
 
@@ -24,9 +26,9 @@ const plotH = H - T - B
 const format = (value: number) => props.formatValue ? props.formatValue(value) : Number.isInteger(value) ? String(value) : value.toFixed(1)
 
 const todayIndex = computed(() => Math.max(0, ...props.series.map((item) => item.values.length - 1)))
+// The axis follows the data, so early lines are readable; reference lines beyond it become labels at the top edge.
 const top = computed(() => chartTop({
   currentMax: Math.max(0, ...props.series.map((item) => Math.max(0, ...item.values))),
-  refMax: Math.max(0, ...(props.refLines ?? []).map((line) => line.value)),
   capFactor: props.capFactor,
   minScale: props.minScale,
 }))
@@ -36,7 +38,8 @@ const x = (index: number) => L + (shown.value > 1 ? index / (shown.value - 1) : 
 const MIN_TICK_GAP = 34
 const visibleTicks = computed(() => {
   const kept: Tick[] = []
-  for (const tick of [...(props.ticks ?? [])].sort((first, second) => first.index - second.index)) {
+  const source = props.weekTicks && shown.value <= 60 ? props.weekTicks : props.ticks
+  for (const tick of [...(source ?? [])].sort((first, second) => first.index - second.index)) {
     if (tick.index > shown.value - 1) break
     if (!kept.length || x(tick.index) - x(kept[kept.length - 1].index) >= MIN_TICK_GAP) kept.push(tick)
   }
@@ -89,13 +92,15 @@ const endLabels = computed(() => {
 
 const yTicks = computed(() => [0, top.value / 2, top.value])
 const refs = computed(() => {
-  const sorted = [...(props.refLines ?? [])].sort((first, second) => second.value - first.value)
+  const sorted = (props.refLines ?? []).filter((line) => line.value <= top.value).sort((first, second) => second.value - first.value)
   return sorted.map((line, index) => ({
     ...line, y: y(line.value),
     // Labels sit above their line, except the lower of two lines which sits below to avoid overlap.
     labelY: index > 0 && sorted[index - 1] && Math.abs(y(sorted[index - 1].value) - y(line.value)) < 14 ? y(line.value) + 10 : y(line.value) - 4,
   }))
 })
+
+const offChart = computed(() => (props.refLines ?? []).filter((line) => line.value > top.value).sort((first, second) => first.value - second.value))
 
 const hover = ref<number | null>(null)
 const tipRows = computed(() => hover.value === null ? [] : props.series
@@ -133,6 +138,7 @@ function finish() { hover.value = null }
         <line :x1="L" :x2="W - R" :y1="line.y" :y2="line.y" stroke-dasharray="2 4" />
         <text :x="L + 4" :y="line.labelY" stroke="none">{{ line.label }}</text>
       </g>
+      <text v-for="(line, index) in offChart" :key="line.label" class="chart-off" :x="L + 4" :y="T + 11 + index * 11" :style="{ fill: line.color }">↑ {{ line.label }}</text>
       <g v-for="item in drawn" :key="item.id" :style="{ stroke: item.color, fill: item.color }" :class="{ 'is-muted': item.muted }">
         <path :d="item.line" fill="none" :stroke-width="item.width ?? 2" stroke-linejoin="round" stroke-linecap="round" />
         <path v-if="item.projection" :d="item.projection.path" fill="none" :stroke-width="item.width ?? 2" stroke-dasharray="3 5" stroke-linecap="round" opacity=".7" />
