@@ -8,8 +8,8 @@ export default defineConfig(({ mode }) => {
   return {
     base,
     plugins: [vue(), VitePWA({
-      // A rehearsal build (VITE_USE_LOCAL_CONFIG=true) has no service worker, so the browser never serves a cached older build.
-      disable: env.VITE_USE_LOCAL_CONFIG === 'true',
+      // The rehearsal build has no service worker, so the browser never serves a cached older build.
+      disable: mode === 'rehearsal',
       registerType: 'prompt',
       includeAssets: ['apple-touch-icon.png', 'favicon.png'],
       manifest: {

@@ -13,6 +13,8 @@
     "build": "npm run typecheck && vite build",
     "preview": "vite preview --host 127.0.0.1",
     "preview:lan": "vite preview --host 0.0.0.0",
+    "build:rehearsal": "vue-tsc --noEmit && vite build --mode rehearsal --outDir dist-rehearsal --emptyOutDir",
+    "rehearsal": "npm run build:rehearsal && vite preview --mode rehearsal --outDir dist-rehearsal --host 0.0.0.0",
     "test": "vitest run",
     "icons": "node scripts/generate-icons.mjs",
     "users": "node scripts/manage-users.mjs"
