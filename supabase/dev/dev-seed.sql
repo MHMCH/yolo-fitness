@@ -11,7 +11,7 @@
 -- which is how the unseed script recognises them.
 do $seed$
 declare
-  v_is_test_db boolean := true;                 -- change to true to confirm this is NOT production
+  v_is_test_db boolean := false;                -- change to true to confirm this is NOT production
   v_start date := date '2026-08-01';             -- test season start; the real one is 2026-10-01
   -- u1 .. u11, in order
   v_names text[] := array['Max', 'Marco', 'Daniel', 'Jens', 'Jonas', 'Seba', 'Philipp', 'Axel', 'Jörg', 'Tobi', 'Torben'];
