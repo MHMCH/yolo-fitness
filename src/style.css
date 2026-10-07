@@ -29,7 +29,9 @@ a { color: inherit; }
 .preview-label { color: var(--pink); }
 .connection-dot { width: 5px; height: 5px; background: var(--green); border-radius: 50%; }
 .disconnected { color: #efb87e; }
-.connection { user-select: none; -webkit-user-select: none; }
+.connection { user-select: none; -webkit-user-select: none; border-radius: 8px; }
+.connection.test-flash { animation: test-flash 1.3s ease-out; }
+@keyframes test-flash { 0% { box-shadow: 0 0 0 0 #ff579bcc; background: #ff579b40; } 60% { box-shadow: 0 0 0 12px #ff579b00; background: #ff579b20; } 100% { box-shadow: 0 0 0 12px #ff579b00; background: transparent; } }
 .test-badge { margin-left: 4px; padding: 1px 6px; font-size: 9px; font-weight: 700; color: #351225; background: var(--pink); border-radius: 999px; }
 .workspace { width: 100%; max-width: 470px; margin: auto; padding-top: 58px; padding-bottom: 34px; }
 h1 { font-size: 30px; line-height: 1.3; font-weight: 650; margin: 8px 0 0; overflow-wrap: anywhere; }

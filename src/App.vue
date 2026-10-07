@@ -65,10 +65,16 @@ async function startPreview() {
   demo = createDemo()
   preview.value = true
 }
+const testFlash = ref(false)
 function registerTestTap() {
   if (!requireTestMode) return
   const state = tapTestMode()
-  if (state !== null) message.value = state ? 'Test mode on: your next session shows the new features.' : 'Test mode off.'
+  if (state === null) return
+  message.value = state ? 'Test mode on: your next session shows the new features.' : 'Test mode off.'
+  // Feedback only when the gesture completes. Vibration is missing on iPhones, hence the visual flash as well.
+  try { navigator.vibrate?.(state ? [60, 80, 60] : 140) } catch { /* not supported */ }
+  testFlash.value = true
+  window.setTimeout(() => { testFlash.value = false }, 1300)
 }
 async function saveLastYear() {
   const text = lastYearInput.value.trim()
@@ -102,7 +108,7 @@ async function deleteEntry(id: string, date: string) {
         <span>yolo-fitness</span>
       </a>
       <span v-if="preview" class="preview-label">Local preview</span>
-      <div v-else-if="identity" class="connection" :class="{ disconnected: !online }" @click="registerTestTap">
+      <div v-else-if="identity" class="connection" :class="{ disconnected: !online, 'test-flash': testFlash }" @click="registerTestTap">
         <span v-if="online" class="connection-dot"></span><WifiOff v-else :size="14" />
         {{ online ? 'Connected' : 'Offline' }}<span v-if="testMode && requireTestMode" class="test-badge">test</span>
       </div>
