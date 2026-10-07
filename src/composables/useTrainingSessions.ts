@@ -84,7 +84,9 @@ export function useTrainingSessions(identity: Ref<string>, repository: () => Ses
         if (code && ['42501', '23514', '23502', '22P02'].includes(code)) {
           persistPending(null)
           pending.value = null
-          error.value = 'The database rejected this entry. Check the date or ask the organizer to check permissions.'
+          error.value = /locked/i.test((failure as { message?: string })?.message ?? '')
+            ? 'That month is closed. Sessions can only be added to the current month.'
+            : 'The database rejected this entry. Check the date or ask the organizer to check permissions.'
         } else error.value = 'Save not confirmed. Retry checks the same entry; it will not log another session.'
       }
     } finally {
