@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { Check, Copy, LoaderCircle, Medal, RefreshCw, Trophy } from '@lucide/vue'
 import LineChart from './LineChart.vue'
 import { useClipboard } from '../composables/useClipboard'
@@ -15,7 +15,7 @@ const props = defineProps<{
   league: AppConfig['league']; monthly: MonthlyPoints[]; daily: DailyPoints[]; today: string; me: string
   loaded: boolean; loading: boolean; error: string; teamName: (team: string[]) => string
 }>()
-defineEmits<{ refresh: [] }>()
+const emit = defineEmits<{ refresh: []; notify: [text: string]; fail: [text: string] }>()
 
 const keys = computed(() => quarterKeys(props.league))
 const key = ref('')
@@ -25,6 +25,18 @@ watch(keys, (list) => {
 }, { immediate: true })
 const teams = computed(() => props.league[key.value] ?? [])
 const { copying, message: copyMessage, error: copyError, copy } = useClipboard(computed(() => JSON.stringify([props.me, key.value, month.value])))
+// The result is shown as a toast (the page itself may be scrolled), and the icon turns into a check for a moment.
+const justCopied = ref(false)
+let copiedTimer = 0
+watch(copyMessage, (text) => {
+  if (!text) return
+  emit('notify', text)
+  justCopied.value = true
+  window.clearTimeout(copiedTimer)
+  copiedTimer = window.setTimeout(() => { justCopied.value = false }, 1400)
+})
+watch(copyError, (text) => { if (text) emit('fail', text) })
+onBeforeUnmount(() => window.clearTimeout(copiedTimer))
 
 const range = computed(() => typeof month.value === 'number' && key.value ? monthRange(key.value, month.value) : null)
 const rows = computed(() => range.value ? monthRows(teams.value, props.monthly, range.value, props.today) : [])
@@ -62,10 +74,10 @@ const canCopy = computed(() => props.loaded && !props.loading && !props.error &&
   && (month.value === 'total' ? totals.value.length > 0 : started.value))
 function copyLeague() {
   if (!key.value || !canCopy.value) return
-  if (month.value === 'total') { void copy(totalChat(totals.value, quarterLabel(key.value), props.teamName), 'League'); return }
+  if (month.value === 'total') { void copy(totalChat(totals.value, quarterLabel(key.value), props.teamName), 'League total'); return }
   const heading = `${quarterLabel(key.value)} · ${monthLabel(key.value, month.value)}`
   const status = closed.value ? 'closed' : `running, ends ${shortDate(addDays(range.value!.hi, -1))}`
-  void copy(monthChat(rows.value, heading, status, props.teamName), 'League')
+  void copy(monthChat(rows.value, heading, status, props.teamName), `League (${monthLabel(key.value, month.value)})`)
 }
 </script>
 
@@ -74,7 +86,7 @@ function copyLeague() {
     <div><p class="eyebrow">{{ key ? quarterLabel(key).toUpperCase() : 'SEASON' }}</p><h1>League.</h1></div>
     <div class="board-actions">
       <button class="icon-button" title="Copy league" aria-label="Copy league" :disabled="!canCopy" @click="copyLeague">
-        <LoaderCircle v-if="copying" class="spin" :size="20" /><Copy v-else :size="20" />
+        <LoaderCircle v-if="copying" class="spin" :size="20" /><Check v-else-if="justCopied" class="logged-check" :size="20" /><Copy v-else :size="20" />
       </button>
       <button class="icon-button" title="Refresh" aria-label="Refresh" :disabled="loading" @click="$emit('refresh')"><RefreshCw :size="20" :class="{ spin: loading }" /></button>
     </div>
@@ -150,8 +162,4 @@ function copyLeague() {
   </template>
   <p v-if="error" class="feedback error board-error" role="alert">{{ error }}</p>
   <button v-if="error" class="secondary" :disabled="loading" @click="$emit('refresh')"><RefreshCw :size="16" /> Try again</button>
-  <div class="copy-feedback" aria-live="polite">
-    <p v-if="copyMessage" class="feedback success"><Check :size="16" /> {{ copyMessage }}</p>
-    <p v-if="copyError" class="feedback error" role="alert">{{ copyError }}</p>
-  </div>
 </template>

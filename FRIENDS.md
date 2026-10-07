@@ -16,6 +16,7 @@ Install before signing in: the installed app and a browser tab can have separate
 - A short sound plays after a confirmed save when your browser permits audio. Turn **Session sound** off in **Account** for quiet logging; the setting is remembered on this device. The visible saved confirmation remains authoritative.
 - Your counters show **your own** sessions this month and total sessions. All calendar dates/months use **Europe/Berlin**, even while traveling.
 - Open **Session history** (below the Home chart) to review entries. **Add a past session** accepts a date only, within the **current month**; future dates and closed months are not allowed. Delete an entry with the bin button and confirm only if you want it removed permanently. Sessions of a closed month can no longer be changed; ask the organizer if one was forgotten.
+- Swipe sideways on a screen to switch between the tabs at the bottom. On the charts, sliding a finger shows exact values instead, so swipe next to them.
 - Logging and refreshing need an internet connection. An installed app can open offline, but it does not queue saves.
 - If a save is unconfirmed, reconnect and use **Retry unconfirmed save**. This retries the same session safely. Do not tap new actions or add another entry to resolve uncertainty; an error is not a saved confirmation.
 

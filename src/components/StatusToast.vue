@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Check, X } from '@lucide/vue'
 
-defineProps<{ message: string; error: string; pending: boolean; busy: boolean }>()
+defineProps<{ message: string; error: string; notice: string; pending: boolean; busy: boolean }>()
 defineEmits<{ retry: []; refresh: []; dismiss: [] }>()
 </script>
 
@@ -13,6 +13,7 @@ defineEmits<{ retry: []; refresh: []; dismiss: [] }>()
       <button v-else class="toast-action" :disabled="busy" @click="$emit('refresh')">Refresh</button>
       <button class="toast-close" aria-label="Dismiss" title="Dismiss" @click="$emit('dismiss')"><X :size="16" /></button>
     </div>
+    <div v-else-if="notice" class="toast toast-error" role="alert"><span class="toast-text">{{ notice }}</span></div>
     <div v-else-if="message" class="toast toast-success" role="status"><Check :size="16" /><span class="toast-text">{{ message }}</span></div>
   </div>
 </template>

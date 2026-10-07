@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { Plus, History, Trophy, House, Users, UserRound, ArrowLeft, ArrowRight, LogOut, Trash2, CalendarPlus, RefreshCw, Check, WifiOff, LoaderCircle, X } from '@lucide/vue'
 import { useRegisterSW } from 'virtual:pwa-register/vue'
 import { useAuth } from './composables/useAuth'
@@ -20,6 +20,7 @@ import { boardRepository, type BoardRepository } from './lib/boardRepository'
 import { appConfig, type AppConfig } from './config'
 import { requireTestMode, streetGreetings } from './config/release'
 import { confirmation, greeting } from './lib/greetings'
+import { neighbour, NO_SWIPE_SELECTOR, swipeDirection, type Point } from './lib/swipe'
 import { displayDate, displayMonth, monthBounds } from './lib/trainingDates'
 
 const { user, loading: authLoading, busy: authBusy, error: authError, preview, displayName, lastYearCount, identity, featuresUnlocked, signIn, setName, setLastYearCount, unlockFeatures, relockFeatures, relockPreview, signOut } = useAuth()
@@ -62,6 +63,44 @@ watch(displayName, (value) => { name.value = value }, { immediate: true })
 // A confirmation belongs to the moment it happened: drop it when leaving the screen and after a few seconds.
 let messageTimer = 0
 watch(view, () => { message.value = '' })
+// A copy that failed, shown as an error toast without actions; it goes away on its own.
+const notice = ref('')
+let noticeTimer = 0
+watch(notice, (text) => { window.clearTimeout(noticeTimer); if (text) noticeTimer = window.setTimeout(() => { notice.value = '' }, 5000) })
+
+// Swiping sideways moves between the tabs. The charts, form fields and the tab bar keep their own touch behaviour.
+const workspace = ref<HTMLElement | null>(null)
+const tabOrder = computed<Array<'home' | 'leaderboard' | 'league' | 'account'>>(() => featuresVisible.value ? ['home', 'leaderboard', 'league', 'account'] : ['home', 'account'])
+const currentTab = computed(() => view.value === 'history' ? 'home' : view.value)
+let swipeStart: Point | null = null
+function swipeBegin(event: TouchEvent) {
+  const touch = event.touches[0]
+  const blocked = event.touches.length !== 1 || celebrating.value || (event.target instanceof Element && event.target.closest(NO_SWIPE_SELECTOR))
+  swipeStart = blocked || !touch ? null : { x: touch.clientX, y: touch.clientY }
+}
+function swipeEnd(event: TouchEvent) {
+  const start = swipeStart
+  swipeStart = null
+  const touch = event.changedTouches[0]
+  if (!start || !touch) return
+  const direction = swipeDirection(start, { x: touch.clientX, y: touch.clientY }, window.innerWidth)
+  const target = direction ? neighbour(tabOrder.value, currentTab.value as (typeof tabOrder.value)[number], direction) : null
+  if (target) view.value = target
+}
+// A short slide-in of the new screen. Only the content moves: the fixed tab bar must not be inside a transformed parent.
+const tabOf = (name: string) => tabOrder.value.indexOf(name as (typeof tabOrder.value)[number])
+watch(view, async (next, previous) => {
+  if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return
+  const from = tabOf(previous === 'history' ? 'home' : previous)
+  const to = tabOf(next === 'history' ? 'home' : next)
+  if (from < 0 || to < 0 || from === to) return
+  await nextTick()
+  const offset = to > from ? 28 : -28
+  for (const element of Array.from(workspace.value?.children ?? [])) {
+    if (element.matches('.tabs, .toast-region')) continue
+    element.animate([{ transform: `translateX(${offset}px)`, opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 200, easing: 'ease-out' })
+  }
+})
 watch(message, (text) => { window.clearTimeout(messageTimer); if (text) messageTimer = window.setTimeout(() => { message.value = '' }, 4000) })
 watch(lastYearCount, (value) => { lastYearInput.value = value === null ? '' : String(value) }, { immediate: true })
 async function submitSignIn() {
@@ -169,7 +208,7 @@ async function deleteEntry(id: string, date: string) {
       <p v-if="authError" role="alert" class="feedback error">{{ authError }}</p>
     </main>
 
-    <main v-else class="workspace">
+    <main v-else ref="workspace" class="workspace" @touchstart.passive="swipeBegin" @touchend.passive="swipeEnd">
       <template v-if="view === 'home'">
         <div v-if="street" class="greeting"><p class="eyebrow">{{ street.eyebrow }}</p><h1>{{ street.title }}</h1></div>
         <div v-else class="greeting"><p class="eyebrow">{{ displayMonth(today).toUpperCase() }} / {{ today.slice(0, 4) }}</p><h1>Hey, {{ displayName }}.</h1></div>
@@ -205,12 +244,12 @@ async function deleteEntry(id: string, date: string) {
       </template>
 
       <template v-else-if="view === 'leaderboard'">
-        <LeaderboardView :season="progress.season.value" :rows="boards.leaderboard.value" :daily="boards.daily.value" :today="today" :me="identity"
+        <LeaderboardView @notify="message = $event" @fail="notice = $event" :season="progress.season.value" :rows="boards.leaderboard.value" :daily="boards.daily.value" :today="today" :me="identity"
           :loaded="boards.loaded.value" :loading="boards.loading.value" :error="boards.error.value" @refresh="boards.refresh()" />
       </template>
 
       <template v-else-if="view === 'league'">
-        <LeagueView :league="config().league" :monthly="boards.monthly.value" :daily="boards.daily.value" :today="today" :me="identity"
+        <LeagueView @notify="message = $event" @fail="notice = $event" :league="config().league" :monthly="boards.monthly.value" :daily="boards.daily.value" :today="today" :me="identity"
           :loaded="boards.loaded.value" :loading="boards.loading.value" :error="boards.error.value" :team-name="boards.teamName" @refresh="boards.refresh()" />
       </template>
 
@@ -243,7 +282,7 @@ async function deleteEntry(id: string, date: string) {
       </nav>
     </main>
     <aside v-if="needRefresh" class="update-bar"><span>Update available.</span><button class="secondary" :disabled="busy || !!pending || authBusy" @click="updateServiceWorker(true)"><RefreshCw :size="16" /> Update</button><button class="icon-button" title="Dismiss update" aria-label="Dismiss update" @click="needRefresh = false"><X :size="18" /></button></aside>
-    <StatusToast v-if="identity" :message="message" :error="error" :pending="!!pending" :busy="locked" @retry="logSession()" @refresh="training.refresh()" @dismiss="error = ''" />
+    <StatusToast v-if="identity" :message="message" :error="error" :notice="notice" :pending="!!pending" :busy="locked" @retry="logSession()" @refresh="training.refresh()" @dismiss="error = ''" />
     <CelebrationOverlay v-if="celebrating" @close="celebrating = false" />
     <footer class="footer"><span>yolo-fitness</span><span>Europe/Berlin</span></footer>
   </div>

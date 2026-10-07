@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import { Copy, LoaderCircle, Medal, Minus, RefreshCw, TrendingDown, TrendingUp } from '@lucide/vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { Check, Copy, LoaderCircle, Medal, Minus, RefreshCw, TrendingDown, TrendingUp } from '@lucide/vue'
 import LineChart from './LineChart.vue'
 import { useClipboard } from '../composables/useClipboard'
 import { leaderboardChat } from '../lib/chatText'
@@ -12,9 +12,21 @@ import type { DailyPoints } from '../types/database'
 
 const GOAL = 100
 const props = defineProps<{ season: Season; rows: LeaderboardRow[]; daily: DailyPoints[]; today: string; me: string; loaded: boolean; loading: boolean; error: string }>()
-defineEmits<{ refresh: [] }>()
+const emit = defineEmits<{ refresh: []; notify: [text: string]; fail: [text: string] }>()
 const picked = ref<string | null>(null)
 const { copying, message: copyMessage, error: copyError, copy } = useClipboard(computed(() => props.me))
+// The result is shown as a toast (the page itself may be scrolled), and the icon turns into a check for a moment.
+const justCopied = ref(false)
+let copiedTimer = 0
+watch(copyMessage, (text) => {
+  if (!text) return
+  emit('notify', text)
+  justCopied.value = true
+  window.clearTimeout(copiedTimer)
+  copiedTimer = window.setTimeout(() => { justCopied.value = false }, 1400)
+})
+watch(copyError, (text) => { if (text) emit('fail', text) })
+onBeforeUnmount(() => window.clearTimeout(copiedTimer))
 
 const length = computed(() => seasonLength(props.season.starts_on))
 const todayIndex = computed(() => Math.min(Math.max(diffDays(props.season.starts_on, props.today), 0), length.value - 1))
@@ -43,7 +55,7 @@ const canCopy = computed(() => props.loaded && !props.loading && !props.error &&
     <div><p class="eyebrow">{{ season.name.toUpperCase() }}</p><h1>Leaderboard.</h1></div>
     <div class="board-actions">
       <button class="icon-button" title="Copy leaderboard" aria-label="Copy leaderboard" :disabled="!canCopy" @click="copy(leaderboardChat(rows, season.name, today), 'Leaderboard')">
-        <LoaderCircle v-if="copying" class="spin" :size="20" /><Copy v-else :size="20" />
+        <LoaderCircle v-if="copying" class="spin" :size="20" /><Check v-else-if="justCopied" class="logged-check" :size="20" /><Copy v-else :size="20" />
       </button>
       <button class="icon-button" title="Refresh" aria-label="Refresh" :disabled="loading" @click="$emit('refresh')"><RefreshCw :size="20" :class="{ spin: loading }" /></button>
     </div>
@@ -82,8 +94,4 @@ const canCopy = computed(() => props.loaded && !props.loading && !props.error &&
   </template>
   <p v-if="error" class="feedback error board-error" role="alert">{{ error }}</p>
   <button v-if="error" class="secondary" :disabled="loading" @click="$emit('refresh')"><RefreshCw :size="16" /> Try again</button>
-  <div class="copy-feedback" aria-live="polite">
-    <p v-if="copyMessage" class="feedback success">{{ copyMessage }}</p>
-    <p v-if="copyError" class="feedback error" role="alert">{{ copyError }}</p>
-  </div>
 </template>
