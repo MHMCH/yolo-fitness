@@ -2,8 +2,9 @@
 --
 -- Run in the dashboard SQL Editor (it runs without a user session, so the month lock does not apply).
 -- It expects the existing test accounts u1@test.test .. u11@test.test and:
---   * names them (account metadata, like the app does), gives each a plausible last-year count and
---     unlocks the season screens
+--   * names them (account metadata, like the app does) and gives each a plausible last-year count; with
+--     v_unlock_accounts = true it also marks the accounts as unlocked, so the season screens are visible without
+--     seeing the celebration first (leave it false to test the celebration)
 --   * adds random sessions from v_start until today: about half the group trains 0-2 times a week,
 --     the other half 1-3 times (each person gets a fixed random rate in their range). With the default
 --     v_start two quarters are finished and have a champion; the current quarter is running.
@@ -14,6 +15,7 @@
 do $seed$
 declare
   v_is_test_db boolean := false;                -- change to true to confirm this is NOT production
+  v_unlock_accounts boolean := false;           -- true: skip the celebration, the season screens are visible at once
   v_start date := date '2026-04-01';            -- first day of the test season (the real one is 2026-10-01)
   -- u1 .. u11, in order
   v_names text[] := array['Max', 'Marco', 'Daniel', 'Jens', 'Jonas', 'Seba', 'Philipp', 'Axel', 'Jörg', 'Tobi', 'Torben'];
@@ -41,8 +43,10 @@ begin
     v_rate := case when random() < 0.5 then random() * 2 else 1 + random() * 2 end;   -- sessions per week
     update auth.users set raw_user_meta_data = coalesce(raw_user_meta_data, '{}'::jsonb) || jsonb_build_object(
         'display_name', v_names[i],
-        'last_year_count', round(v_rate * 52 * (0.7 + random() * 0.7))::integer,
-        'features_unlocked_at', coalesce(raw_user_meta_data ->> 'features_unlocked_at', now()::text))
+        'last_year_count', round(v_rate * 52 * (0.7 + random() * 0.7))::integer)
+        || case when v_unlock_accounts
+             then jsonb_build_object('features_unlocked_at', coalesce(raw_user_meta_data ->> 'features_unlocked_at', now()::text))
+             else '{}'::jsonb end
       where id = v_id;
     -- weekend bias, rare double sessions
     insert into public.training_sessions (id, user_id, trained_on, created_at)
