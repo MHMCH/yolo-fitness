@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { leaderboardRows, monthStandings, quarterLabel, quarterTable, quarterWinners, rankWithTies } from '../src/lib/league'
+import { leaderboardRows, leaderboardText, leagueText, monthStandings, quarterLabel, quarterTable, quarterWinners, rankWithTies } from '../src/lib/league'
 import type { MonthlyPoints } from '../src/types/database'
 
 const teams = [['a1', 'a2', 'a3'], ['b1', 'b2'], ['c1', 'c2'], ['d1', 'd2']]
@@ -13,6 +13,31 @@ const points = [
 const byTeam = (rows: ReturnType<typeof quarterTable>) => Object.fromEntries(rows.map((row) => [row.team[0][0], row]))
 
 describe('league scoring', () => {
+  it('exports only leaderboard columns and rows in displayed order', () => {
+    const rows = [
+      { user_id: 'private-id-a', display_name: 'Ann|A\nB', total_points: 5, points_before_today: 4, rank: 1, movement: 2 },
+      { user_id: 'private-id-b', display_name: 'Ben', total_points: 3, points_before_today: 3, rank: 2, movement: -1 },
+      { user_id: 'private-id-c', display_name: 'Cem', total_points: 0, points_before_today: 0, rank: 3, movement: 0 },
+    ]
+    expect(leaderboardText(rows)).toBe([
+      '| Rank | Name | Points | Position change |',
+      '| --- | --- | --- | --- |',
+      '| 1 | Ann\\|A B | 5 | 2 up |',
+      '| 2 | Ben | 3 | 1 down |',
+      '| 3 | Cem | 0 | Unchanged |',
+    ].join('\n'))
+  })
+  it('exports league averages, displayed bonus, totals and chronological medals', () => {
+    expect(leagueText([
+      { team: ['private-id'], monthAverage: 6.333333, monthRank: 1, monthBonus: 3, quarterTotal: 12.666667, medals: [3, 1] },
+      { team: ['other-id'], monthAverage: 0, monthRank: 2, monthBonus: 0, quarterTotal: 0, medals: [] },
+    ], (team) => team[0] === 'private-id' ? 'Anna & Ben' : 'Cem')).toBe([
+      '| Team | Month | Quarter | Wins |',
+      '| --- | --- | --- | --- |',
+      '| Anna & Ben | 6.3 +3 | 12.7 | Bronze, Gold |',
+      '| Cem | 0.0 | 0.0 |  |',
+    ].join('\n'))
+  })
   it('ranks ties with shared places and skips the next place', () => {
     expect(rankWithTies([3, 3, 2, 0.5])).toEqual([1, 1, 3, 4])
   })

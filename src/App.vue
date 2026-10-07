@@ -1,16 +1,17 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { Plus, History, UserRound, ArrowLeft, ArrowRight, LogOut, Trash2, CalendarPlus, RefreshCw, Check, WifiOff, LoaderCircle, X, Trophy, Medal, TrendingUp, TrendingDown, Minus } from '@lucide/vue'
+import { Plus, History, UserRound, ArrowLeft, ArrowRight, LogOut, Trash2, CalendarPlus, RefreshCw, Check, WifiOff, LoaderCircle, X, Trophy, Medal, TrendingUp, TrendingDown, Minus, Copy } from '@lucide/vue'
 import { useRegisterSW } from 'virtual:pwa-register/vue'
 import { useAuth } from './composables/useAuth'
 import { useTrainingSessions } from './composables/useTrainingSessions'
 import { useSessionSound } from './composables/useSessionSound'
 import { useBoards } from './composables/useBoards'
+import { useClipboard } from './composables/useClipboard'
 import { configured } from './lib/supabase'
 import { sessionRepository, type SessionRepository } from './lib/sessionRepository'
 import { boardRepository, type BoardRepository } from './lib/boardRepository'
 import { league, type LeagueConfig } from './config/league'
-import { quarterLabel } from './lib/league'
+import { leaderboardText, leagueText, quarterLabel } from './lib/league'
 import { daysUntilMonthEnd, displayDate, displayMonth } from './lib/trainingDates'
 
 const { user, loading: authLoading, busy: authBusy, error: authError, preview, displayName, identity, signIn, setName, signOut } = useAuth()
@@ -22,6 +23,14 @@ const { quarter, leaderboard, table: leagueTable, winners, loaded: boardsLoaded,
   useBoards(identity, () => preview.value ? demoRepository! : boardRepository, () => preview.value ? demoConfig : league, () => today.value)
 const view = ref<'home' | 'history' | 'boards' | 'account'>('home')
 const boardTab = ref<'leaderboard' | 'league'>('leaderboard')
+const { copying, message: copyMessage, error: copyError, copy } = useClipboard(computed(() => JSON.stringify([identity.value, view.value, boardTab.value])))
+const canCopyBoard = computed(() => boardsLoaded.value && !boardsLoading.value && !boardsError.value && !copying.value
+  && (boardTab.value === 'leaderboard' ? leaderboard.value.length > 0 : leagueTable.value.length > 0))
+function copyBoard() {
+  if (!canCopyBoard.value) return
+  const isLeaderboard = boardTab.value === 'leaderboard'
+  void copy(isLeaderboard ? leaderboardText(leaderboard.value) : leagueText(leagueTable.value, teamName), isLeaderboard ? 'Leaderboard' : 'League')
+}
 const places = ['', 'First place', 'Second place', 'Third place']
 const medalClass = (rank: number) => ['', 'gold', 'silver', 'bronze'][rank]
 const bonusCountdown = computed(() => {
@@ -146,7 +155,7 @@ async function deleteEntry(id: string, date: string) {
       </template>
 
       <template v-else-if="view === 'boards'">
-        <div class="view-heading"><div><p class="eyebrow">{{ boardTab === 'leaderboard' ? 'ALL-TIME POINTS' : `${quarterLabel(quarter).toUpperCase()} / ${displayMonth(today).toUpperCase()}` }}</p><h1>{{ boardTab === 'leaderboard' ? 'Leaderboard.' : 'League.' }}</h1></div><button class="icon-button" title="Refresh boards" aria-label="Refresh boards" :disabled="boardsLoading || !online" @click="refreshBoards()"><RefreshCw :size="20" :class="{ spin: boardsLoading }" /></button></div>
+        <div class="view-heading board-heading"><div><p class="eyebrow">{{ boardTab === 'leaderboard' ? 'ALL-TIME POINTS' : `${quarterLabel(quarter).toUpperCase()} / ${displayMonth(today).toUpperCase()}` }}</p><h1>{{ boardTab === 'leaderboard' ? 'Leaderboard.' : 'League.' }}</h1></div><div class="board-actions"><button class="icon-button" :title="boardTab === 'leaderboard' ? 'Copy leaderboard' : 'Copy league'" :aria-label="boardTab === 'leaderboard' ? 'Copy leaderboard' : 'Copy league'" :disabled="!canCopyBoard" @click="copyBoard"><LoaderCircle v-if="copying" class="spin" :size="20" /><Copy v-else :size="20" /></button><button class="icon-button" title="Refresh boards" aria-label="Refresh boards" :disabled="boardsLoading || !online" @click="refreshBoards()"><RefreshCw :size="20" :class="{ spin: boardsLoading }" /></button></div></div>
         <div class="segmented" role="tablist" aria-label="Board">
           <button role="tab" :class="{ selected: boardTab === 'leaderboard' }" :aria-selected="boardTab === 'leaderboard'" @click="boardTab = 'leaderboard'">Leaderboard</button>
           <button role="tab" :class="{ selected: boardTab === 'league' }" :aria-selected="boardTab === 'league'" @click="boardTab = 'league'">League</button>
@@ -185,6 +194,10 @@ async function deleteEntry(id: string, date: string) {
           <p v-else-if="boardsLoaded" class="empty muted">No teams set for this quarter.</p>
         </template>
         <p v-if="boardsError" class="feedback error board-error" role="alert">{{ boardsError }}</p>
+        <div class="copy-feedback" aria-live="polite">
+          <p v-if="copyMessage" class="feedback success"><Check :size="16" /> {{ copyMessage }}</p>
+          <p v-if="copyError" class="feedback error" role="alert">{{ copyError }}</p>
+        </div>
       </template>
 
       <template v-else>

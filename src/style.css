@@ -105,6 +105,10 @@ input { color: var(--text); background: var(--surface); border: 1px solid #37394
 .league-table tr.bonus-cut td { border-bottom: 1px solid #ff579b80; }
 .bonus-legend { font-size: 11px; line-height: 1.7; margin: 14px 0 0; }
 .board-error { margin-top: 18px; }
+.board-heading { flex-wrap: wrap; }
+.board-heading > div:first-child { min-width: 0; flex: 1 1 180px; }
+.board-actions { display: flex; flex-shrink: 0; }
+.copy-feedback:not(:empty) { margin-top: 14px; }
 .spin { animation: spin 1s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes arrive { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
