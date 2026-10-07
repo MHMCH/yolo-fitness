@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { Plus, History, Trophy, House, Users, UserRound, ArrowLeft, ArrowRight, LogOut, Trash2, CalendarPlus, RefreshCw, Check, WifiOff, LoaderCircle, X } from '@lucide/vue'
 import { useRegisterSW } from 'virtual:pwa-register/vue'
 import { useAuth } from './composables/useAuth'
@@ -17,7 +17,8 @@ import { sessionRepository, type SessionRepository } from './lib/sessionReposito
 import { seasonRepository, type SeasonRepository } from './lib/seasonRepository'
 import { boardRepository, type BoardRepository } from './lib/boardRepository'
 import { appConfig, type AppConfig } from './config'
-import { requireTestMode } from './config/release'
+import { requireTestMode, streetGreetings } from './config/release'
+import { confirmation, greeting } from './lib/greetings'
 import { displayDate, displayMonth, monthBounds } from './lib/trainingDates'
 
 const { user, loading: authLoading, busy: authBusy, error: authError, preview, displayName, lastYearCount, identity, featuresUnlocked, signIn, setName, setLastYearCount, unlockFeatures, relockFeatures, relockPreview, signOut } = useAuth()
@@ -33,6 +34,12 @@ const celebrating = ref(false)
 const { armed: testMode, tap: tapTestMode } = useTestMode()
 const featuresEnabled = computed(() => !requireTestMode || import.meta.env.DEV || preview.value || testMode.value)
 const featuresVisible = computed(() => featuresEnabled.value && featuresUnlocked.value && !celebrating.value)
+// Street greetings: a gimmick behind the same guard. The clock ticks once a minute so the line follows the time of day.
+const clock = ref(new Date())
+const clockTimer = window.setInterval(() => { clock.value = new Date() }, 60_000)
+onBeforeUnmount(() => window.clearInterval(clockTimer))
+const trainedToday = computed(() => progress.days.value.includes(today.value))
+const street = computed(() => streetGreetings && featuresVisible.value ? greeting(clock.value, displayName.value, trainedToday.value) : null)
 const openFrom = computed(() => monthBounds(today.value).start)
 const view = ref<'home' | 'history' | 'leaderboard' | 'league' | 'account'>('home')
 const boards = useBoards(identity, computed(() => view.value === 'leaderboard' || view.value === 'league'), computed(() => summary.value?.total_count),
@@ -103,6 +110,7 @@ async function logSession(date?: string) {
   if (saved && identity.value === account) {
     void playSound()
     if (featuresEnabled.value && !featuresUnlocked.value) { celebrating.value = true; void unlockFeatures() }
+    else if (streetGreetings && featuresVisible.value) message.value = confirmation(new Date())
   }
 }
 async function deleteEntry(id: string, date: string) {
@@ -157,7 +165,8 @@ async function deleteEntry(id: string, date: string) {
 
     <main v-else class="workspace">
       <template v-if="view === 'home'">
-        <div class="greeting"><p class="eyebrow">{{ displayMonth(today).toUpperCase() }} / {{ today.slice(0, 4) }}</p><h1>Hey, {{ displayName }}.</h1></div>
+        <div v-if="street" class="greeting"><p class="eyebrow">{{ street.eyebrow }}</p><h1>{{ street.title }}</h1></div>
+        <div v-else class="greeting"><p class="eyebrow">{{ displayMonth(today).toUpperCase() }} / {{ today.slice(0, 4) }}</p><h1>Hey, {{ displayName }}.</h1></div>
         <section class="training-action" aria-label="Log training">
           <button class="log-button" :disabled="locked" :aria-label="pending ? 'Retry unconfirmed session' : 'Log a training session'" :title="pending ? 'Retry unconfirmed session' : 'Log a training session'" @click="logSession()">
             <LoaderCircle v-if="busy" class="spin" :size="66" :stroke-width="2" />
