@@ -65,6 +65,12 @@ describe('development seed and unseed scripts', () => {
     expect(flags.every((row) => typeof row.flag === 'string')).toBe(true)
     await database.exec(unseed)
   })
+  it('prints the same local config on its own, without seeding', async () => {
+    const standalone = await read('dev-local-config.sql')
+    const results = await database.exec(standalone)
+    expect(String((results[results.length - 1].rows[0] as { local_ts: string }).local_ts)).toBe(snippet)
+    expect(await count('select count(*) n from public.training_sessions')).toBe(0)
+  })
   it('keeps the unlock switch off in the committed script', () => {
     expect(seed).toMatch(/v_unlock_accounts boolean := false/)
   })

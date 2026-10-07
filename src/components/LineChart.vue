@@ -35,7 +35,7 @@ const top = computed(() => chartTop({
 // Zooming is skipped when a projection is drawn, because that needs the whole period.
 const shown = computed(() => props.zoom && !props.series.some((item) => item.projection) ? visibleDays(todayIndex.value, props.days, props.minDays) : props.days)
 const x = (index: number) => L + (shown.value > 1 ? index / (shown.value - 1) : 0) * plotW
-const MIN_TICK_GAP = 34
+const MIN_TICK_GAP = 42
 const visibleTicks = computed(() => {
   const kept: Tick[] = []
   const source = props.weekTicks && shown.value <= 60 ? props.weekTicks : props.ticks

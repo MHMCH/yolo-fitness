@@ -67,10 +67,10 @@ export function totalRows(teams: string[][], monthly: MonthlyPoints[], key: stri
     .sort((first, second) => first.rank - second.rank || first.slot - second.slot)
 }
 
-/** Weekly labels under a month chart: "1 Oct", 8, 15, 22, 29. */
+/** Weekly labels under a month chart: "1 Oct", "8 Oct", "15 Oct", "22 Oct", "29 Oct". */
 export function dayTicks(lo: string, length: number): Tick[] {
-  const first = `1 ${monthName.format(new Date(`${lo}T12:00:00Z`))}`
-  return [0, 7, 14, 21, 28].filter((index) => index < length).map((index) => ({ index, label: index === 0 ? first : String(index + 1) }))
+  const month = monthName.format(new Date(`${lo}T12:00:00Z`))
+  return [0, 7, 14, 21, 28].filter((index) => index < length).map((index) => ({ index, label: `${index + 1} ${month}` }))
 }
 
 export const formatScore = (value: number) => (Math.round(value * 10) / 10).toFixed(1).replace(/\.0$/, '')

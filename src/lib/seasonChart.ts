@@ -116,13 +116,12 @@ export function monthTicks(start: string): Tick[] {
   })
 }
 
-/** Weekly labels for a short axis: "1 Oct", 8, 15, 22, 29, "5 Nov", ... */
+/** Weekly labels for a short axis: "1 Oct", "8 Oct", "15 Oct", ... */
 export function weekTicks(start: string, totalDays: number): Tick[] {
   const ticks: Tick[] = []
   for (let index = 0; index < totalDays; index += 7) {
     const date = addDays(start, index)
-    const day = Number(date.slice(8, 10))
-    ticks.push({ index, label: index === 0 || day <= 7 ? `${day} ${monthName.format(new Date(`${date}T12:00:00Z`))}` : String(day) })
+    ticks.push({ index, label: `${Number(date.slice(8, 10))} ${monthName.format(new Date(`${date}T12:00:00Z`))}` })
   }
   return ticks
 }

@@ -28,8 +28,8 @@ describe('season calendar helpers', () => {
     expect(ticks).toHaveLength(12)
     expect(ticks[1].index).toBe(31)
   })
-  it('labels weeks on a short axis, with the month at the start of each month', () => {
-    expect(weekTicks('2026-10-01', 60).map((tick) => tick.label)).toEqual(['1 Oct', '8', '15', '22', '29', '5 Nov', '12', '19', '26'])
+  it('labels weeks on a short axis with day and month', () => {
+    expect(weekTicks('2026-10-01', 60).map((tick) => tick.label)).toEqual(['1 Oct', '8 Oct', '15 Oct', '22 Oct', '29 Oct', '5 Nov', '12 Nov', '19 Nov', '26 Nov'])
     expect(weekTicks('2026-10-01', 15).map((tick) => tick.index)).toEqual([0, 7, 14])
   })
   it('zooms the x-axis to the days so far, plus a margin', () => {

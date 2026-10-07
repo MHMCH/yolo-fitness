@@ -16,8 +16,8 @@ describe('calendar quarters and months', () => {
   })
   it('labels months and weekly ticks', () => {
     expect(monthLabel('2026-Q3', 2)).toBe('Sep')
-    expect(dayTicks('2026-10-01', 31).map((tick) => tick.label)).toEqual(['1 Oct', '8', '15', '22', '29'])
-    expect(dayTicks('2027-02-01', 28).map((tick) => tick.label)).toEqual(['1 Feb', '8', '15', '22'])
+    expect(dayTicks('2026-10-01', 31).map((tick) => tick.label)).toEqual(['1 Oct', '8 Oct', '15 Oct', '22 Oct', '29 Oct'])
+    expect(dayTicks('2027-02-01', 28).map((tick) => tick.label)).toEqual(['1 Feb', '8 Feb', '15 Feb', '22 Feb'])
   })
   it('lists quarters that have teams, oldest first', () => {
     expect(quarterKeys({ '2027-Q1': [['a']], '2026-Q4': [['a']], '2027-Q2': [] })).toEqual(['2026-Q4', '2027-Q1'])
