@@ -7,6 +7,7 @@ import { useTrainingSessions } from './composables/useTrainingSessions'
 import { useSessionSound } from './composables/useSessionSound'
 import { useSeasonProgress } from './composables/useSeasonProgress'
 import { useBoards } from './composables/useBoards'
+import { useTestMode } from './composables/useTestMode'
 import SeasonProgress from './components/SeasonProgress.vue'
 import LeaderboardView from './components/LeaderboardView.vue'
 import LeagueView from './components/LeagueView.vue'
@@ -16,6 +17,7 @@ import { sessionRepository, type SessionRepository } from './lib/sessionReposito
 import { seasonRepository, type SeasonRepository } from './lib/seasonRepository'
 import { boardRepository, type BoardRepository } from './lib/boardRepository'
 import { appConfig, type AppConfig } from './config'
+import { requireTestMode } from './config/release'
 import { displayDate, displayMonth, monthBounds } from './lib/trainingDates'
 
 const { user, loading: authLoading, busy: authBusy, error: authError, preview, displayName, lastYearCount, identity, featuresUnlocked, signIn, setName, setLastYearCount, unlockFeatures, relockPreview, signOut } = useAuth()
@@ -27,7 +29,10 @@ const progress = useSeasonProgress(identity, computed(() => summary.value?.total
 const lastYearInput = ref('')
 // The season screens stay hidden until the first confirmed session; the celebration ends before they appear.
 const celebrating = ref(false)
-const featuresVisible = computed(() => featuresUnlocked.value && !celebrating.value)
+// Release guard: until `requireTestMode` is switched off, the new screens only exist in a browser that turned on test mode.
+const { armed: testMode, tap: tapTestMode } = useTestMode()
+const featuresEnabled = computed(() => !requireTestMode || import.meta.env.DEV || preview.value || testMode.value)
+const featuresVisible = computed(() => featuresEnabled.value && featuresUnlocked.value && !celebrating.value)
 const openFrom = computed(() => monthBounds(today.value).start)
 const view = ref<'home' | 'history' | 'leaderboard' | 'league' | 'account'>('home')
 const boards = useBoards(identity, computed(() => view.value === 'leaderboard' || view.value === 'league'), computed(() => summary.value?.total_count),
@@ -60,6 +65,11 @@ async function startPreview() {
   demo = createDemo()
   preview.value = true
 }
+function registerTestTap() {
+  if (!requireTestMode) return
+  const state = tapTestMode()
+  if (state !== null) message.value = state ? 'Test mode on: your next session shows the new features.' : 'Test mode off.'
+}
 async function saveLastYear() {
   const text = lastYearInput.value.trim()
   await setLastYearCount(text === '' ? null : Number(text))
@@ -76,7 +86,7 @@ async function logSession(date?: string) {
   const saved = await training.log(date)
   if (saved && identity.value === account) {
     void playSound()
-    if (!featuresUnlocked.value) { celebrating.value = true; void unlockFeatures() }
+    if (featuresEnabled.value && !featuresUnlocked.value) { celebrating.value = true; void unlockFeatures() }
   }
 }
 async function deleteEntry(id: string, date: string) {
@@ -92,9 +102,9 @@ async function deleteEntry(id: string, date: string) {
         <span>yolo-fitness</span>
       </a>
       <span v-if="preview" class="preview-label">Local preview</span>
-      <div v-else-if="identity" class="connection" :class="{ disconnected: !online }">
+      <div v-else-if="identity" class="connection" :class="{ disconnected: !online }" @click="registerTestTap">
         <span v-if="online" class="connection-dot"></span><WifiOff v-else :size="14" />
-        {{ online ? 'Connected' : 'Offline' }}
+        {{ online ? 'Connected' : 'Offline' }}<span v-if="testMode && requireTestMode" class="test-badge">test</span>
       </div>
     </header>
 

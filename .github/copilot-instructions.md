@@ -9,4 +9,5 @@
 - No offline writes or custom action artwork. Session sound plays only after confirmed saves and can be disabled.
 - `supabase/dev/` holds scripts for TEST projects only. Never run them on production and keep the committed `v_is_test_db` flag `false`. `src/config/local.ts` is a git-ignored, dev-server-only override.
 - Keep the database small: schema changes go in a new additive, re-runnable migration with PGlite tests in `tests/`, applied before the frontend that needs it.
+- `src/config/release.ts` holds a temporary release guard (`requireTestMode`): while true, the new screens stay off unless a browser turned on test mode. Remove the guard when the release is final.
 - Validate changes with npm test and npm run build.
