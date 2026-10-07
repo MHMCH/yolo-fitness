@@ -108,9 +108,7 @@ function copyLeague() {
             <template v-if="started"><Medal v-if="row.rank <= 3 && row.average > 0" :size="18" :class="medalClass(row.rank)" role="img" :aria-label="places[row.rank]" /><template v-else>{{ row.rank }}</template></template>
           </span>
           <span class="team-chip" :style="{ background: teamColor(row.slot) }"></span>
-          <span class="team-names">{{ teamName(row.team) }}
-            <span class="medals"><Medal v-for="(rank, index) in medalsOf(row.team)" :key="index" :size="14" :class="medalClass(rank)" role="img" :aria-label="`${places[rank]} in a closed month`" /></span>
-          </span>
+          <span class="team-names">{{ teamName(row.team) }}</span>
           <span v-if="started" class="team-score">
             <strong>{{ row.closed ? formatScore(row.average + row.bonus) : formatScore(row.average) }}
               <span v-if="!row.closed && row.bonus" class="bonus-chip" :class="medalClass(row.rank)" :title="`Currently ${places[row.rank].toLowerCase()}: +${row.bonus} at month end`">+{{ row.bonus }}</span></strong>
@@ -131,7 +129,9 @@ function copyLeague() {
         <li v-for="row in totals" :key="row.slot" :class="{ me: mine(row.team) }" class="total-row">
           <span class="rank-place"><Medal v-if="row.rank <= 3 && row.total > 0" :size="18" :class="medalClass(row.rank)" role="img" :aria-label="places[row.rank]" /><template v-else>{{ row.rank }}</template></span>
           <span class="team-chip" :style="{ background: teamColor(row.slot) }"></span>
-          <span class="team-names">{{ teamName(row.team) }}</span>
+          <span class="team-names">{{ teamName(row.team) }}
+            <span class="medals"><Medal v-for="(rank, index) in medalsOf(row.team)" :key="index" :size="14" :class="medalClass(rank)" role="img" :aria-label="`${places[rank]} in a closed month`" /></span>
+          </span>
           <span class="team-score"><strong>{{ formatScore(row.total) }}</strong></span>
           <span class="stack" :aria-label="`Months: ${segments(row).map((segment) => formatScore(segment.value)).join(', ')}`">
             <span v-for="segment in segments(row)" :key="segment.index" class="stack-part" :class="{ live: segment.live }"
@@ -139,7 +139,7 @@ function copyLeague() {
           </span>
         </li>
       </ol>
-      <p class="muted small rank-hint">One segment per month; the lighter segment is the month still running.</p>
+      <p class="muted small rank-hint">Bar: one segment per month, the lighter one is the month still running. Small medals: the places a team reached in closed months.</p>
     </template>
   </template>
   <p v-if="error" class="feedback error board-error" role="alert">{{ error }}</p>

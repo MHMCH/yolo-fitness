@@ -44,6 +44,10 @@ const { needRefresh, updateServiceWorker } = useRegisterSW()
 const { enabled: soundEnabled, prepare: prepareSound, play: playSound, setEnabled: setSoundEnabled } = useSessionSound()
 watch(identity, () => { celebrating.value = false; view.value = 'home'; name.value = ''; pastDate.value = ''; adding.value = false })
 watch(displayName, (value) => { name.value = value }, { immediate: true })
+// A confirmation belongs to the moment it happened: drop it when leaving the screen and after a few seconds.
+let messageTimer = 0
+watch(view, () => { message.value = '' })
+watch(message, (text) => { window.clearTimeout(messageTimer); if (text) messageTimer = window.setTimeout(() => { message.value = '' }, 4000) })
 watch(lastYearCount, (value) => { lastYearInput.value = value === null ? '' : String(value) }, { immediate: true })
 async function submitSignIn() {
   const secret = password.value

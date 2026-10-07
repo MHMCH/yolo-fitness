@@ -73,10 +73,10 @@ const canCopy = computed(() => props.loaded && !props.loading && !props.error &&
     <p v-if="!rows.length" class="empty muted">No participants yet.</p>
     <p class="muted small rank-hint legend">
       <span class="legend-item"><span class="legend-dot" style="background: var(--pink)"></span>You</span>
-      <span class="legend-item"><span class="legend-dot" :style="{ background: AHEAD_COLOR }"></span>The person just ahead of you</span>
-      <span class="legend-item"><span class="legend-dot" :style="{ background: BEHIND_COLOR }"></span>The person just behind you</span>
+      <span class="legend-item"><span class="legend-dot" :style="{ background: AHEAD_COLOR }"></span>The Yolo just ahead of you</span>
+      <span class="legend-item"><span class="legend-dot" :style="{ background: BEHIND_COLOR }"></span>The Yolo just behind you</span>
     </p>
-    <p class="muted small rank-hint">Everyone else is a grey line. If you lead or are last, the two nearest people on the other side are coloured. Tap a name to highlight their line. Arrows compare with yesterday.</p>
+    <p class="muted small rank-hint">Everyone else is a grey line. If you lead or are last, the two nearest Yolos on the other side are coloured. Tap a name to highlight their line. Arrows compare with yesterday.</p>
   </template>
   <p v-if="error" class="feedback error board-error" role="alert">{{ error }}</p>
   <button v-if="error" class="secondary" :disabled="loading" @click="$emit('refresh')"><RefreshCw :size="16" /> Try again</button>
