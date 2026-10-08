@@ -51,7 +51,7 @@ describe('leaderboard export', () => {
     expect(lines[0]).toBe('# Training challenge among friends: leaderboard')
     expect(lines[1]).toContain('Season 2026/27 (2026-10-01 to 2027-09-30)')
     expect(lines[1]).toContain('at least 30 minutes')
-    expect(lines[2]).toBe('Data as of 2026-10-08 (Berlin time). Tied people share a place.')
+    expect(lines[2]).toBe('Data as of 2026-10-08 (Berlin time). Tied people share a place and the next place follows directly, no place is skipped.')
   })
   it('writes one row per person with the derived facts', () => {
     expect(lines).toContain('| 1 | Marco | 81 | 4 | up 2 | n/a | 3 | 2026-10-08 (today) | 2 / 2 |')

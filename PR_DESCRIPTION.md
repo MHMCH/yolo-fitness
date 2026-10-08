@@ -18,7 +18,7 @@ The new screens, the celebration and the greetings are behind a guard (`src/conf
 ### Design
 - **Teams stay in `src/config/league.ts`** (by account id, calendar quarters) and **all standings are calculated in the browser** with the owner's league maths. No team, profile or admin tables.
 - Display name, last year's count and the unlock flag live in the **account metadata**, as the display name always did.
-- Ranking rules are the owner's: ties share the place and the next place is skipped (1, 1, 3), a team without sessions gets no bonus, the running month shows its provisional bonus.
+- Ranking rules are the owner's: ties share the place and the next place follows directly, so no medal or bonus is skipped (1, 1, 2, 3; bonus +3, +3, +2, +1; this changes the owner's earlier 1, 1, 3 rule and should be agreed with them), a team without sessions gets no bonus, the running month shows its provisional bonus.
 - The season start is `src/config/season.ts`. A git-ignored `src/config/local.ts` lets a test project use its own ids and an earlier season start. `npm run rehearsal` builds the production build with it into a separate folder (no service worker) and serves it on the network; the deployment build never contains it.
 
 ### Database
@@ -41,7 +41,7 @@ The old frontend keeps working after step 3 (apart from the month lock), so ther
 `supabase/rollback/202610070001_month_lock_and_daily_points_down.sql` removes the trigger and the new function and leaves `training_sessions` and `auth.users` untouched (tested). Then redeploy the previous frontend (revert the merge).
 
 ### Testing
-- `npm test` (157 tests): the owner's league maths and clipboard tests, the league configuration guard, rival selection, chart, team, greeting, swipe and chat-text logic, the unlock and test-mode logic, and the real migrations in embedded PostgreSQL: grants and RLS, month lock, aggregate functions, **applying the migrations to a database that already holds data (sessions and accounts unchanged, no new tables, running them twice)**, the rollback, and the dev seed scripts.
+- `npm test` (165 tests): the owner's league maths and clipboard tests, the league configuration guard, rival selection, chart, team, greeting, swipe and chat-text logic, the unlock and test-mode logic, and the real migrations in embedded PostgreSQL: grants and RLS, month lock, aggregate functions, **applying the migrations to a database that already holds data (sessions and accounts unchanged, no new tables, running them twice)**, the rollback, and the dev seed scripts.
 - `npm run typecheck`, `npm run build`, and every screen was checked in the local demo preview, including phone-sized windows.
 - Not verified here: the migrations and the app against the production project, real-device PWA behaviour (installed app, iPhone safe areas, swipe feel), and that the account metadata keys (name, last year's count, unlock flag) do not overwrite each other when saved, which should be confirmed once on a test project.
 

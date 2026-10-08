@@ -10,8 +10,13 @@ export type LeaderboardRow = LeaderboardEntry & { rank: number; movement: number
 export type LeagueRow = { team: string[]; monthAverage: number; monthRank: number; monthBonus: number; quarterTotal: number; medals: number[] }
 export type QuarterWinner = { key: string; teams: string[][] }
 
+/**
+ * Places for the given scores, highest first. Equal scores share a place and the next place follows directly,
+ * so no place (and no medal or bonus) is skipped: 3, 3, 2, 1 gives 1, 1, 2, 3.
+ */
 export function rankWithTies(values: number[]): number[] {
-  return values.map((value) => 1 + values.filter((other) => other > value).length)
+  const distinct = [...new Set(values)].sort((first, second) => second - first)
+  return values.map((value) => distinct.indexOf(value) + 1)
 }
 
 export function quarterStart(key: string): string {

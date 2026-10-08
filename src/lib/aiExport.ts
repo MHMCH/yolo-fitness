@@ -109,7 +109,7 @@ export function leaderboardForAi(rows: LeaderboardRow[], daily: DailyPoints[], s
   return [
     '# Training challenge among friends: leaderboard',
     `${season.name} (${season.starts_on} to ${season.ends_on}). One point is one workout of at least 30 minutes. The season goal is 100 sessions per person.`,
-    `Data as of ${today} (Berlin time). Tied people share a place.`,
+    `Data as of ${today} (Berlin time). Tied people share a place and the next place follows directly, no place is skipped.`,
     '',
     '## Standings',
     ...table(['Rank', 'Name', 'Sessions', 'Last 7 days', 'Place change vs. yesterday', 'Behind person above', 'Ahead of person below', 'Last session', 'Weekly streak now / longest'], body, [0, 2, 3, 5, 6]),
@@ -125,7 +125,7 @@ export function leaderboardForAi(rows: LeaderboardRow[], daily: DailyPoints[], s
 // League
 
 const LEAGUE_RULES = [
-  'Rules: a team\'s score for a month is its sessions divided by its number of members (average per member). When a month closes (last day, 23:59 Berlin time) the top 3 teams get a bonus of +3, +2 and +1 on top of that average; teams with the same score share a place and get the same bonus, and teams without any session get no bonus.',
+  'Rules: a team\'s score for a month is its sessions divided by its number of members (average per member). When a month closes (last day, 23:59 Berlin time) the top 3 teams get a bonus of +3, +2 and +1 on top of that average; teams with the same score share a place and get the same bonus, the next place follows directly (no place is skipped), and teams without any session get no bonus.',
   'A quarter\'s result is the sum of its three monthly results: closed months with bonus, the running month without bonus.',
 ]
 

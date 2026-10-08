@@ -21,11 +21,11 @@ describe('season totals from daily points', () => {
     expect(seasonEntries(names, daily, '2026-10-05').some((entry) => entry.user_id === 'zzz')).toBe(false)
     expect(seasonEntries(names, daily, '2026-12-01').find((entry) => entry.user_id === 'c')?.total_points).toBe(6)
   })
-  it('feeds the rank arrows: someone who catches up moves up, the person passed moves down', () => {
+  it('feeds the rank arrows: someone who catches up moves up, places are never skipped', () => {
     const rows = leaderboardRows(seasonEntries(names, daily, '2026-10-05'))
     expect(rows.map(({ user_id, rank, movement }) => ({ user_id, rank, movement }))).toEqual([
       { user_id: 'a', rank: 1, movement: 0 }, { user_id: 'b', rank: 1, movement: 1 },
-      { user_id: 'c', rank: 3, movement: -1 }, { user_id: 'd', rank: 4, movement: 0 }])
+      { user_id: 'c', rank: 2, movement: 0 }, { user_id: 'd', rank: 3, movement: 0 }])
   })
   it('does not turn a backdated session into movement', () => {
     // Session dated yesterday but logged today: it is already in points_before_today.

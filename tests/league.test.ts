@@ -13,22 +13,24 @@ const points = [
 const byTeam = (rows: ReturnType<typeof quarterTable>) => Object.fromEntries(rows.map((row) => [row.team[0][0], row]))
 
 describe('league scoring', () => {
-  it('ranks ties with shared places and skips the next place', () => {
-    expect(rankWithTies([3, 3, 2, 0.5])).toEqual([1, 1, 3, 4])
+  it('ranks ties with shared places and no skipped place', () => {
+    expect(rankWithTies([3, 3, 2, 0.5])).toEqual([1, 1, 2, 3])
+    expect(rankWithTies([3, 2, 2, 2, 1])).toEqual([1, 2, 2, 2, 3])
+    expect(rankWithTies([])).toEqual([])
   })
   it('averages by team size and gives tied teams the higher bonus', () => {
     const standings = monthStandings(teams, new Map(points.filter((row) => row.month === '2026-10-01').map((row) => [row.user_id, row.points])))
     expect(standings).toEqual([
       { average: 3, rank: 1, bonus: 3 }, { average: 3, rank: 1, bonus: 3 },
-      { average: 2, rank: 3, bonus: 1 }, { average: 0.5, rank: 4, bonus: 0 },
+      { average: 2, rank: 2, bonus: 2 }, { average: 0.5, rank: 3, bonus: 1 },
     ])
   })
   it('adds undivided bonuses of closed months and the live current-month average', () => {
     const table = byTeam(quarterTable(teams, points, '2026-Q4', '2026-12-10'))
     expect(table.a).toMatchObject({ monthAverage: 2, quarterTotal: 8, medals: [1] })
     expect(table.b).toMatchObject({ monthAverage: 1, quarterTotal: 9, medals: [1, 3] })
-    expect(table.c).toMatchObject({ monthAverage: 0, quarterTotal: 10, medals: [3, 1] })
-    expect(table.d).toMatchObject({ monthAverage: 0.5, quarterTotal: 5, medals: [2] })
+    expect(table.c).toMatchObject({ monthAverage: 0, quarterTotal: 11, medals: [2, 1] })
+    expect(table.d).toMatchObject({ monthAverage: 0.5, quarterTotal: 6, medals: [3, 2] })
   })
   it('exposes the provisional rank and bonus of the current month', () => {
     const table = byTeam(quarterTable(teams, points, '2026-Q4', '2026-12-10'))
@@ -52,7 +54,7 @@ describe('league scoring', () => {
   it('names all tied winners of closed quarters only', () => {
     const config = { '2026-Q4': teams }
     expect(quarterWinners(config, { '2026-Q4': points }, '2026-12-31')).toEqual([])
-    expect(quarterWinners(config, { '2026-Q4': points }, '2027-01-01')).toEqual([{ key: '2026-Q4', teams: [teams[0], teams[1]] }])
+    expect(quarterWinners(config, { '2026-Q4': points }, '2027-01-01')).toEqual([{ key: '2026-Q4', teams: [teams[0], teams[1], teams[2]] }])
     expect(quarterLabel('2026-Q4')).toBe('Q4 2026')
   })
   it('ranks the leaderboard and reports movement since yesterday', () => {

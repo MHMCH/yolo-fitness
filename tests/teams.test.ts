@@ -51,10 +51,10 @@ describe('month and quarter standings', () => {
     ...month('2026-10-01', { a1: 3, a2: 3, a3: 3, b1: 4, b2: 2, c1: 2, c2: 2, d1: 1 }),
     ...month('2026-11-01', { b1: 1, b2: 1, c1: 5, c2: 3, d1: 2, d2: 2 }),
   ]
-  it('ranks a closed month with ties sharing the place and the next team third', () => {
+  it('ranks a closed month with ties sharing the place and the next team directly after', () => {
     const rows = monthRows(teams, monthly, monthRange('2026-Q4', 0), '2026-11-15')
     expect(rows.map((row) => [row.slot, row.average, row.rank, row.bonus, row.closed])).toEqual([
-      [1, 3, 1, 3, true], [2, 3, 1, 3, true], [3, 2, 3, 1, true], [4, 0.5, 4, 0, true]])
+      [1, 3, 1, 3, true], [2, 3, 1, 3, true], [3, 2, 2, 2, true], [4, 0.5, 3, 1, true]])
   })
   it('shows the bonus a team would get if the running month ended now', () => {
     const rows = monthRows(teams, monthly, monthRange('2026-Q4', 1), '2026-11-15')
@@ -70,11 +70,13 @@ describe('month and quarter standings', () => {
     const bySlot = Object.fromEntries(rows.map((row) => [row.slot, row]))
     expect(bySlot[1].months).toEqual([6, 0, null])
     expect(bySlot[2].months).toEqual([6, 1, null])
-    expect(bySlot[3].months).toEqual([3, 4, null])
-    expect(bySlot[4].months).toEqual([0.5, 2, null])
+    expect(bySlot[3].months).toEqual([4, 4, null])
+    expect(bySlot[4].months).toEqual([1.5, 2, null])
     expect(bySlot[3].liveMonth).toBe(1)
-    // Totals 6, 7, 7 and 2.5: the two teams on 7 share first place, the next team is third.
-    expect(rows.map((row) => [row.slot, row.total, row.rank])).toEqual([[2, 7, 1], [3, 7, 1], [1, 6, 3], [4, 2.5, 4]])
+    // Totals 6, 7, 8 and 3.5: every team gets its own place.
+    expect(rows.map((row) => [row.slot, row.total, row.rank])).toEqual([[3, 8, 1], [2, 7, 2], [1, 6, 3], [4, 3.5, 4]])
+    // Two teams on the same total share a place and the next place follows directly.
+    expect(totalRows([['x'], ['y'], ['z']], [...month('2026-10-01', { x: 2, y: 2, z: 1 })], '2026-Q4', '2026-10-20').map((row) => row.rank)).toEqual([1, 1, 2])
   })
 })
 
