@@ -4,7 +4,8 @@ import { Check, Copy, LoaderCircle, Medal, RefreshCw, Trophy } from '@lucide/vue
 import LineChart from './LineChart.vue'
 import { useClipboard } from '../composables/useClipboard'
 import type { AppConfig } from '../config'
-import { monthChat, shortDate, totalChat } from '../lib/chatText'
+import { beforeToday, leagueMonthForAi, leagueTotalForAi, monthLong } from '../lib/aiExport'
+import { monthlyFromDaily } from '../lib/boards'
 import { quarterLabel, quarterTable, quarterWinners } from '../lib/league'
 import { addDays } from '../lib/seasonChart'
 import { buildTeamSeries, dayTicks, defaultSelection, formatScore, monthLabel, monthRange, monthRows, ordinal, quarterKeys, teamColor, totalRows } from '../lib/teams'
@@ -72,12 +73,33 @@ const monthOrder = computed(() => key.value ? [0, 1, 2].map((index) => monthLabe
 const hasTeams = computed(() => keys.value.length > 0)
 const canCopy = computed(() => props.loaded && !props.loading && !props.error && !copying.value
   && (month.value === 'total' ? totals.value.length > 0 : started.value))
+// The league as structured text for an AI prompt (see lib/aiExport.ts).
 function copyLeague() {
   if (!key.value || !canCopy.value) return
-  if (month.value === 'total') { void copy(totalChat(totals.value, quarterLabel(key.value), props.teamName), 'League total'); return }
-  const heading = `${quarterLabel(key.value)} · ${monthLabel(key.value, month.value)}`
-  const status = closed.value ? 'closed' : `running, ends ${shortDate(addDays(range.value!.hi, -1))}`
-  void copy(monthChat(rows.value, heading, status, props.teamName), `League (${monthLabel(key.value, month.value)})`)
+  const quarter = quarterLabel(key.value)
+  const names = { teamName: props.teamName, personName: (id: string) => props.teamName([id]) }
+  const champions = winners.value.map((winner) => ({ quarter: quarterLabel(winner.key), teams: winner.teams.map(props.teamName) }))
+  if (month.value === 'total') {
+    const states = [0, 1, 2].map((index) => {
+      const first = monthRows(teams.value, props.monthly, monthRange(key.value, index), props.today)[0]
+      return !first?.started ? 'not started' as const : first.closed ? 'closed' as const : 'running' as const
+    })
+    void copy(leagueTotalForAi({ ...names, quarter, today: props.today, totals: totals.value, winners: champions, monthStatus: states,
+      monthNames: [0, 1, 2].map((index) => monthLong(monthRange(key.value, index).lo)) }), 'League total')
+    return
+  }
+  const current = range.value!
+  const yesterday = addDays(props.today, -1)
+  const running = rows.value.some((row) => row.started && !row.closed)
+  const rowsYesterday = running && current.lo <= yesterday
+    ? monthRows(teams.value, monthlyFromDaily(beforeToday(props.daily, props.today)), current, yesterday) : null
+  const earlier = Array.from({ length: month.value as number }, (_, index) => {
+    const earlierRange = monthRange(key.value, index)
+    const earlierRows = monthRows(teams.value, props.monthly, earlierRange, props.today)
+    return { month: monthLong(earlierRange.lo), rows: earlierRows, closed: earlierRows.every((row) => row.closed) }
+  }).filter((entry) => entry.closed).map(({ month: name, rows: earlierRows }) => ({ month: name, rows: earlierRows }))
+  void copy(leagueMonthForAi({ ...names, quarter, today: props.today, range: current, rows: rows.value, rowsYesterday, totals: totals.value,
+    monthly: props.monthly, earlier, winners: champions }), `League (${monthLabel(key.value, month.value)})`)
 }
 </script>
 

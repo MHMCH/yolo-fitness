@@ -6,7 +6,7 @@ Combines the `feature/leaderboard-league` work with the season screens built on 
 - **Home:** season chart with the personal curve, the goal of 100 sessions and last year's count; slide a finger over it for exact values. Street-style greeting by weekday and time of day.
 - **Leaderboard** (the owner's rules): season totals with gold/silver/bronze medals, shared places, rank arrows since yesterday, a chart where you and your direct rivals (one above, one below) are coloured, tap-to-highlight, copy.
 - **League** (the owner's rules): quarters and months to browse, live standings with the bonus a team would get if the month ended now, final results with bonus for closed months, quarter totals with the monthly results, per-team charts, quarter champions, copy.
-- **Copy:** chat-style text for the group chat (medals, arrows, bold top three, English, nobody highlighted), confirmed by a toast and a check icon. This replaces the owner's table-text export.
+- **Copy:** structured Markdown for pasting into an AI prompt (rules first, explicit words and numbers, derived facts such as last 7 days, gaps, weekly streaks and who overtook whom), the same for everybody and with first names and counts only, confirmed by a toast and a check icon. This replaces the owner's table-text export.
 - **Account:** last year's sessions.
 - **Month lock:** sessions can only be added or deleted in the **current** month, so closed months (and the standings calculated from them) cannot change.
 - **Unlock surprise:** the new screens are hidden until each account's next confirmed session, which shows a fullscreen celebration with the "Yeah Buddy" sticker, confetti and stars. Stored per account; UI only.

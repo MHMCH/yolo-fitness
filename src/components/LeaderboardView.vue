@@ -3,10 +3,10 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { Check, Copy, LoaderCircle, Medal, Minus, RefreshCw, TrendingDown, TrendingUp } from '@lucide/vue'
 import LineChart from './LineChart.vue'
 import { useClipboard } from '../composables/useClipboard'
-import { leaderboardChat } from '../lib/chatText'
+import { leaderboardForAi } from '../lib/aiExport'
 import type { LeaderboardRow } from '../lib/league'
 import { AHEAD_COLOR, BEHIND_COLOR, buildRankingSeries, MUTED_COLOR, PICKED_COLOR } from '../lib/ranking'
-import { addDays, diffDays, monthTicks, seasonLength, weekTicks, type RefLine, type Season } from '../lib/seasonChart'
+import { addDays, diffDays, monthTicks, seasonEnd, seasonLength, weekTicks, type RefLine, type Season } from '../lib/seasonChart'
 import { displayDate } from '../lib/trainingDates'
 import type { DailyPoints } from '../types/database'
 
@@ -47,6 +47,7 @@ const chipColor = (id: string) => {
 }
 const summary = computed(() => `Season leaderboard. ${props.rows.map((row) => `${row.rank}. ${row.display_name}, ${row.total_points} sessions`).join('; ')}`)
 const toggle = (id: string) => { picked.value = picked.value === id ? null : id }
+const aiText = () => leaderboardForAi(props.rows, props.daily, { ...props.season, ends_on: addDays(seasonEnd(props.season.starts_on), -1) }, props.today)
 const canCopy = computed(() => props.loaded && !props.loading && !props.error && !copying.value && props.rows.length > 0)
 </script>
 
@@ -54,7 +55,7 @@ const canCopy = computed(() => props.loaded && !props.loading && !props.error &&
   <div class="view-heading board-heading">
     <div><p class="eyebrow">{{ season.name.toUpperCase() }}</p><h1>Leaderboard.</h1></div>
     <div class="board-actions">
-      <button class="icon-button" title="Copy leaderboard" aria-label="Copy leaderboard" :disabled="!canCopy" @click="copy(leaderboardChat(rows, season.name, today), 'Leaderboard')">
+      <button class="icon-button" title="Copy leaderboard" aria-label="Copy leaderboard" :disabled="!canCopy" @click="copy(aiText(), 'Leaderboard')">
         <LoaderCircle v-if="copying" class="spin" :size="20" /><Check v-else-if="justCopied" class="logged-check" :size="20" /><Copy v-else :size="20" />
       </button>
       <button class="icon-button" title="Refresh" aria-label="Refresh" :disabled="loading" @click="$emit('refresh')"><RefreshCw :size="20" :class="{ spin: loading }" /></button>
