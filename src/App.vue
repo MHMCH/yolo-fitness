@@ -7,7 +7,6 @@ import { useTrainingSessions } from './composables/useTrainingSessions'
 import { useSessionSound } from './composables/useSessionSound'
 import { useSeasonProgress } from './composables/useSeasonProgress'
 import { useBoards } from './composables/useBoards'
-import { useTestMode } from './composables/useTestMode'
 import SeasonProgress from './components/SeasonProgress.vue'
 import StatusToast from './components/StatusToast.vue'
 import LeaderboardView from './components/LeaderboardView.vue'
@@ -18,12 +17,12 @@ import { sessionRepository, type SessionRepository } from './lib/sessionReposito
 import { seasonRepository, type SeasonRepository } from './lib/seasonRepository'
 import { boardRepository, type BoardRepository } from './lib/boardRepository'
 import { appConfig, type AppConfig } from './config'
-import { requireTestMode, streetGreetings } from './config/release'
+import { streetGreetings } from './config/release'
 import { confirmation, greeting } from './lib/greetings'
 import { neighbour, NO_SWIPE_SELECTOR, swipeDirection, type Point } from './lib/swipe'
 import { displayDate, displayMonth, monthBounds } from './lib/trainingDates'
 
-const { user, loading: authLoading, busy: authBusy, error: authError, preview, displayName, lastYearCount, identity, featuresUnlocked, signIn, setName, setLastYearCount, unlockFeatures, relockFeatures, relockPreview, signOut } = useAuth()
+const { user, loading: authLoading, busy: authBusy, error: authError, preview, displayName, lastYearCount, identity, featuresUnlocked, signIn, setName, setLastYearCount, unlockFeatures, relockPreview, signOut } = useAuth()
 let demo: { sessions: SessionRepository; season: SeasonRepository; boards: BoardRepository; config: AppConfig } | null = null
 const config = () => preview.value ? demo!.config : appConfig
 const training = useTrainingSessions(identity, () => preview.value ? demo!.sessions : sessionRepository)
@@ -32,14 +31,11 @@ const progress = useSeasonProgress(identity, computed(() => summary.value?.total
 const lastYearInput = ref('')
 // The season screens stay hidden until the first confirmed session; the celebration ends before they appear.
 const celebrating = ref(false)
-// Release guard: until `requireTestMode` is switched off, the new screens only exist in a browser that turned on test mode.
-const { armed: testMode, tap: tapTestMode } = useTestMode()
-const featuresEnabled = computed(() => !requireTestMode || import.meta.env.DEV || preview.value || testMode.value)
-const featuresVisible = computed(() => featuresEnabled.value && featuresUnlocked.value && !celebrating.value)
+const featuresVisible = computed(() => featuresUnlocked.value && !celebrating.value)
 // The plus turns into a check mark for a moment after a confirmed save, because the toast alone could be missed.
 const justLogged = ref(false)
 let justLoggedTimer = 0
-// Street greetings: a gimmick behind the same guard. The clock ticks once a minute so the line follows the time of day.
+// Street greetings: a gimmick that can be switched off with `streetGreetings`. The clock ticks once a minute so the line follows the time of day.
 const clock = ref(new Date())
 const clockTimer = window.setInterval(() => { clock.value = new Date() }, 60_000)
 onBeforeUnmount(() => window.clearInterval(clockTimer))
@@ -114,23 +110,6 @@ async function startPreview() {
   demo = createDemo()
   preview.value = true
 }
-const testFlash = ref(false)
-async function registerTestTap() {
-  if (!requireTestMode) return
-  const state = tapTestMode()
-  if (state === null) return
-  message.value = state ? 'Test mode on: your next session shows the new features.' : 'Test mode off.'
-  // Feedback only when the gesture completes. Vibration is missing on iPhones, hence the visual flash as well.
-  try { navigator.vibrate?.(state ? [60, 80, 60] : 140) } catch { /* not supported */ }
-  testFlash.value = true
-  window.setTimeout(() => { testFlash.value = false }, 1300)
-  if (!state) {
-    // Switching off also resets this account's unlock, so the celebration can be replayed.
-    celebrating.value = false
-    const reset = await relockFeatures()
-    message.value = reset ? 'Test mode off. The new features are hidden again.' : 'Test mode off, but the unlock could not be reset. Check your connection and switch it off again.'
-  }
-}
 // The save buttons stay disabled until the field differs from what is stored.
 const lastYearChanged = computed(() => String(lastYearInput.value ?? '').trim() !== (lastYearCount.value === null ? '' : String(lastYearCount.value)))
 async function saveLastYear() {
@@ -154,7 +133,7 @@ async function logSession(date?: string) {
     justLogged.value = true
     window.clearTimeout(justLoggedTimer)
     justLoggedTimer = window.setTimeout(() => { justLogged.value = false }, 1400)
-    if (featuresEnabled.value && !featuresUnlocked.value) { celebrating.value = true; void unlockFeatures() }
+    if (!featuresUnlocked.value) { celebrating.value = true; void unlockFeatures() }
     else if (streetGreetings && featuresVisible.value) message.value = confirmation(new Date())
   }
 }
@@ -171,9 +150,9 @@ async function deleteEntry(id: string, date: string) {
         <span>yolo-fitness</span>
       </a>
       <span v-if="preview" class="preview-label">Local preview</span>
-      <div v-else-if="identity" class="connection" :class="{ disconnected: !online, 'test-flash': testFlash }" @click="registerTestTap">
+      <div v-else-if="identity" class="connection" :class="{ disconnected: !online }">
         <span v-if="online" class="connection-dot"></span><WifiOff v-else :size="14" />
-        {{ online ? 'Connected' : 'Offline' }}<span v-if="testMode && requireTestMode" class="test-badge">test</span>
+        {{ online ? 'Connected' : 'Offline' }}
       </div>
     </header>
 

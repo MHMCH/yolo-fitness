@@ -7,10 +7,8 @@ Rule of thumb: database first, then merge. Nothing here changes data; the migrat
 
 1. **Rehearsal on the test project** (your PC)
    - [ ] Test project has both migrations (`202610060001_leaderboard.sql`, `202610070001_month_lock_and_daily_points.sql`) and your `src/config/local.ts` exists.
-   - [ ] `npm run rehearsal`, open the printed address on the phone. This is the real production build with the release guard on.
-   - [ ] Guard off (no taps): only Home and Account tabs; a session shows no celebration.
-   - [ ] Five taps on "Connected": badge, flash/vibration. Log a session: celebration, then Leaderboard and League appear, League shows real names.
-   - [ ] Five taps again: new features hidden, unlock reset.
+   - [ ] `npm run rehearsal`, open the printed address on the phone. This is the real production build.
+   - [ ] Before the first session only Home and Account tabs are there. Log a session: celebration, then Leaderboard and League appear, League shows real names.
    - [ ] Metadata check (SQL editor of the test project): enter last year's sessions in Account, save, then
      ```sql
      select email, raw_user_meta_data from auth.users where email = 'u1@test.test';
@@ -54,12 +52,12 @@ Rule of thumb: database first, then merge. Nothing here changes data; the migrat
    curl -s -X POST "$SUPABASE_URL/rest/v1/rpc/daily_points" -H "apikey: $PUBLISHABLE_KEY" -H "Content-Type: application/json" -d '{"from_date":"2026-10-01","to_date":"2026-11-01"}'
    ```
 4. **Merge the PR.** Watch the Actions run (tests, build, deploy). Open the site: sign in, check the plain Home (greeting "Hey, name.", fixed Home/Account tab bar). Users will see "Update available" and tap **Update**.
-5. **Test in production** (your phone, your real account)
-   - [ ] Five taps on "Connected": test mode on. Log a session (it is real data; delete it afterwards in Session history, the current month is still open).
+5. **Check in production** (your phone, your real account)
+   - [ ] Log a session (it is real data; delete it afterwards in Session history, the current month is still open).
    - [ ] Celebration, Leaderboard (11 names), League (real team names, colours, bonus chips), Home chart, last year's field.
-   - [ ] Check in SQL: `select raw_user_meta_data from auth.users where email = '<yours>';` shows `display_name`, `last_year_count`, `features_unlocked_at`.
-   - [ ] Five taps again: everything hidden again, unlock reset.
-6. **Final release** (second PR, small): set `requireTestMode = false` in `src/config/release.ts`, then delete the guard (files and lines listed in the README, section "Season, Leaderboard And League", Release guard; `release.ts` itself stays because it also holds `streetGreetings`). Merge. Everybody sees the surprise with their next session.
+   - [ ] Check in SQL: `select raw_user_meta_data from auth.users where email = '<yours>';` shows `display_name`, `last_year_count`, `features_unlocked_at`. To replay: `update auth.users set raw_user_meta_data = raw_user_meta_data - 'features_unlocked_at' where email = '<yours>';`.
+
+Everybody sees the surprise with their next session; there is no hidden switch.
 
 ## C. If something goes wrong
 

@@ -1,6 +1,6 @@
 ## Season challenge: Leaderboard, League, charts and month lock
 
-Combines the `feature/leaderboard-league` work with the season screens built on top of it. The league maths, team configuration, medals, rank arrows, quarter champions and the Leaderboard/League names and rules are the owner's. On top of that: charts, a quarter/month browser, a month lock, an unlock celebration, chat-style copy, swiping between tabs and a few quality-of-life fixes. Everything new is behind a release guard (see "Staged release"), so merging changes nothing for users until the guard is switched off.
+Combines the `feature/leaderboard-league` work with the season screens built on top of it. The league maths, team configuration, medals, rank arrows, quarter champions and the Leaderboard/League names and rules are the owner's. On top of that: charts, a quarter/month browser, a month lock, an unlock celebration, chat-style copy, swiping between tabs and a few quality-of-life fixes. Merging releases it: each account sees a celebration with its next confirmed session.
 
 ### What users get
 - **Home:** season chart with the personal curve, the goal of 100 sessions and last year's count; slide a finger over it for exact values. Street-style greeting by weekday and time of day.
@@ -12,8 +12,8 @@ Combines the `feature/leaderboard-league` work with the season screens built on 
 - **Unlock surprise:** the new screens are hidden until each account's next confirmed session, which shows a fullscreen celebration with the "Yeah Buddy" sticker, confetti and stars. Stored per account; UI only.
 - **Navigation:** a tab bar fixed at the bottom; swipe sideways to change tabs (not on charts, fields or screen edges); confirmations and errors appear as a toast under the top bar and as a check mark on the plus, because the old status line sat below the fold.
 
-### Staged release (temporary guard)
-The new screens, the celebration and the greetings are behind a guard (`src/config/release.ts`, `requireTestMode = true`), so merging changes nothing visible for anyone. On the tester's device, five quick taps on "Connected" in the top bar switch test mode on (a "test" badge appears; vibration and a flash confirm it; five taps again switch it off, which also resets that account's unlock so the surprise can be replayed). The next confirmed session then shows the celebration and unlocks the screens for that account only. When production looks right, a follow-up change sets `requireTestMode = false` and removes the guard code; everybody then gets the surprise with their next session. `streetGreetings = false` switches the greetings off on their own. The guard is ignored by the dev server and the local preview. One visible change remains even with the guard on: the bottom bar is now a fixed tab bar with Home and Account, and Session history is a button on Home.
+### Release
+Everybody sees the celebration with their next confirmed session, which unlocks the new screens for that account (stored in the account metadata, UI only). `streetGreetings = false` in `src/config/release.ts` switches the greetings off on their own. The bottom bar is now a fixed tab bar with Home and Account, and Session history is a button on Home.
 
 ### Design
 - **Teams stay in `src/config/league.ts`** (by account id, calendar quarters) and **all standings are calculated in the browser** with the owner's league maths. No team, profile or admin tables.
@@ -33,7 +33,7 @@ Privacy is unchanged in kind: raw sessions stay readable only by their owner, ev
 2. **`src/config/league.ts` carries the real account ids** (the owner's "fixed uuids" commit). A test (`tests/leagueConfig.test.ts`) fails on placeholders, duplicates, missing quarters or inconsistent teams, so a wrong file cannot be deployed. Never use emails there.
 3. **Run the migrations before merging**, in one transaction: `begin;`, the content of `supabase/migrations/202610060001_leaderboard.sql`, the content of `supabase/migrations/202610070001_month_lock_and_daily_points.sql`, `commit;`. They only create functions and a trigger, so this is safe whether or not the leaderboard migration ran before.
 4. **Check:** both counts are unchanged; `select proname from pg_proc where proname in ('leaderboard', 'monthly_points', 'daily_points');` lists three functions; `select count(*) from auth.users where raw_user_meta_data ? 'features_unlocked_at';` is 0; calling `/rest/v1/rpc/daily_points` with only the publishable key and no login is refused.
-5. **Merge** to `main`; the Pages workflow runs the tests and deploys. Installed apps show "Update available" and need a tap on **Update**. While the guard is on, nothing changes for users; test as described above, then release by switching the guard off.
+5. **Merge** to `main`; the Pages workflow runs the tests and deploys. Installed apps show "Update available" and need a tap on **Update**. Each account sees the celebration with its next confirmed session.
 
 The old frontend keeps working after step 3 (apart from the month lock), so there is no rush between steps 3 and 5.
 
@@ -41,9 +41,9 @@ The old frontend keeps working after step 3 (apart from the month lock), so ther
 `supabase/rollback/202610070001_month_lock_and_daily_points_down.sql` removes the trigger and the new function and leaves `training_sessions` and `auth.users` untouched (tested). Then redeploy the previous frontend (revert the merge).
 
 ### Testing
-- `npm test` (165 tests): the owner's league maths and clipboard tests, the league configuration guard, rival selection, chart, team, greeting, swipe and chat-text logic, the unlock and test-mode logic, and the real migrations in embedded PostgreSQL: grants and RLS, month lock, aggregate functions, **applying the migrations to a database that already holds data (sessions and accounts unchanged, no new tables, running them twice)**, the rollback, and the dev seed scripts.
+- `npm test` (161 tests): the owner's league maths and clipboard tests, the league configuration guard, rival selection, chart, team, greeting, swipe and chat-text logic, the unlock logic, and the real migrations in embedded PostgreSQL: grants and RLS, month lock, aggregate functions, **applying the migrations to a database that already holds data (sessions and accounts unchanged, no new tables, running them twice)**, the rollback, and the dev seed scripts.
 - `npm run typecheck`, `npm run build`, and every screen was checked in the local demo preview, including phone-sized windows.
 - Not verified here: the migrations and the app against the production project, real-device PWA behaviour (installed app, iPhone safe areas, swipe feel), and that the account metadata keys (name, last year's count, unlock flag) do not overwrite each other when saved, which should be confirmed once on a test project.
 
 ### Docs
-README, FRIENDS.md and the project conventions describe the season, privacy, month lock, configuration, the release guard, the dev and rehearsal scripts and the seed scripts (`supabase/dev/`, test projects only).
+README, FRIENDS.md and the project conventions describe the season, privacy, month lock, configuration, the release, the dev and rehearsal scripts and the seed scripts (`supabase/dev/`, test projects only).
