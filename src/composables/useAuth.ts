@@ -2,20 +2,48 @@ import { computed, onScopeDispose, ref } from 'vue'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 
+const MAX_LAST_YEAR = 10000
+
+/**
+ * Account state. The display name, last year's session count and the unlock flag live in the account's
+ * user metadata, which the signed-in user may edit; nothing here grants permissions.
+ */
 export function useAuth() {
   const user = ref<User | null>(null)
   const loading = ref(Boolean(supabase))
   const busy = ref(false)
   const error = ref('')
   const preview = ref(false)
-  const displayName = computed(() => preview.value ? 'Alex' : String(user.value?.user_metadata.display_name ?? ''))
+  const previewName = ref('Alex')
+  const previewLastYear = ref<number | null>(40)
+  const previewUnlocked = ref(false)
+  // Set when the unlock could not be saved, so the screens still appear on this device.
+  const unlockedLocally = ref(false)
+  const metadata = computed(() => (user.value?.user_metadata ?? {}) as Record<string, unknown>)
+  const displayName = computed(() => preview.value ? previewName.value : String(metadata.value.display_name ?? ''))
+  const lastYearCount = computed(() => {
+    if (preview.value) return previewLastYear.value
+    const stored = metadata.value.last_year_count
+    return typeof stored === 'number' && Number.isInteger(stored) && stored >= 0 ? stored : null
+  })
+  const featuresUnlocked = computed(() => preview.value ? previewUnlocked.value : Boolean(metadata.value.features_unlocked_at) || unlockedLocally.value)
   const identity = computed(() => preview.value ? 'local-preview' : user.value?.id ?? '')
+
+  function applyUser(next: User | null) {
+    if (next?.id !== user.value?.id) unlockedLocally.value = false
+    user.value = next
+  }
   if (supabase) {
     const { data } = supabase.auth.onAuthStateChange((_event, session) => {
-      user.value = session?.user ?? null
+      applyUser(session?.user ?? null)
       loading.value = false
     })
     onScopeDispose(() => data.subscription.unsubscribe())
+  }
+  async function updateMetadata(data: Record<string, unknown>) {
+    const { data: result, error: authError } = await supabase!.auth.updateUser({ data })
+    if (authError) throw authError
+    applyUser(result.user)
   }
   async function signIn(email: string, password: string) {
     if (!supabase || busy.value) return
@@ -24,22 +52,59 @@ export function useAuth() {
     try {
       const { data, error: authError } = await supabase.auth.signInWithPassword({ email: email.trim(), password })
       if (authError) throw authError
-      user.value = data.user
+      applyUser(data.user)
     } catch {
       error.value = 'Could not sign in. Check your credentials and connection, or contact the organizer.'
     } finally { busy.value = false }
   }
-  async function setName(name: string) {
-    if (!supabase || busy.value || !name.trim()) return
+  /** Returns true when the name was saved. */
+  async function setName(name: string): Promise<boolean> {
+    const trimmed = name.trim().slice(0, 40)
+    if (busy.value || !trimmed) return false
+    if (preview.value) { previewName.value = trimmed; return true }
+    if (!supabase || !user.value) return false
     busy.value = true
     error.value = ''
-    try {
-      const { data, error: authError } = await supabase.auth.updateUser({ data: { display_name: name.trim().slice(0, 40) } })
-      if (authError) throw authError
-      user.value = data.user
-    } catch { error.value = 'Could not save your name. Please try again.' }
+    try { await updateMetadata({ display_name: trimmed }); return true }
+    catch { error.value = 'Could not save your name. Please try again.'; return false }
     finally { busy.value = false }
   }
+  /**
+   * Saves last year's session count. `input` is whatever the field holds: a number (a number input hands
+   * its value over as one), a string, or empty to clear it. Returns true when it was saved.
+   */
+  async function setLastYearCount(input: unknown): Promise<boolean> {
+    if (busy.value) return false
+    const text = String(input ?? '').trim()
+    const count = text === '' ? null : Number(text)
+    if (count !== null && (!Number.isInteger(count) || count < 0 || count > MAX_LAST_YEAR)) { error.value = `Enter a whole number from 0 to ${MAX_LAST_YEAR}.`; return false }
+    error.value = ''
+    if (preview.value) { previewLastYear.value = count; return true }
+    if (!supabase || !user.value) return false
+    busy.value = true
+    try { await updateMetadata({ last_year_count: count }); return true }
+    catch { error.value = 'Could not save last year\'s sessions. Please try again.'; return false }
+    finally { busy.value = false }
+  }
+  /** Remember that this account has seen the unlock celebration; failures keep it unlocked on this device only. */
+  async function unlockFeatures() {
+    if (featuresUnlocked.value) return
+    if (preview.value) { previewUnlocked.value = true; return }
+    const id = user.value?.id
+    if (!supabase || !id) return
+    try { await updateMetadata({ features_unlocked_at: new Date().toISOString() }) }
+    catch { if (user.value?.id === id) unlockedLocally.value = true }
+  }
+  /** Forget that this account saw the unlock celebration, so it is shown again. Returns false if that could not be saved. */
+  async function relockFeatures(): Promise<boolean> {
+    unlockedLocally.value = false
+    if (preview.value) { previewUnlocked.value = false; return true }
+    if (!supabase || !user.value) return false
+    if (!metadata.value.features_unlocked_at) return true
+    try { await updateMetadata({ features_unlocked_at: null }); return true }
+    catch { return false }
+  }
+  function relockPreview() { previewUnlocked.value = false }
   async function signOut() {
     error.value = ''
     if (preview.value) { preview.value = false; return }
@@ -47,9 +112,12 @@ export function useAuth() {
     try {
       const { error: authError } = await supabase!.auth.signOut({ scope: 'local' })
       if (authError) throw authError
-      user.value = null
+      applyUser(null)
     } catch { error.value = 'Could not sign out. Please try again.' }
     finally { busy.value = false }
   }
-  return { user, loading, busy, error, preview, displayName, identity, signIn, setName, signOut }
+  return {
+    user, loading, busy, error, preview, displayName, lastYearCount, identity, featuresUnlocked,
+    signIn, setName, setLastYearCount, unlockFeatures, relockFeatures, relockPreview, signOut,
+  }
 }

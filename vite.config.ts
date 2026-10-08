@@ -8,6 +8,8 @@ export default defineConfig(({ mode }) => {
   return {
     base,
     plugins: [vue(), VitePWA({
+      // The rehearsal build has no service worker, so the browser never serves a cached older build.
+      disable: mode === 'rehearsal',
       registerType: 'prompt',
       includeAssets: ['apple-touch-icon.png', 'favicon.png'],
       manifest: {
@@ -26,7 +28,7 @@ export default defineConfig(({ mode }) => {
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,png,woff2,mp3}'],
+        globPatterns: ['**/*.{js,css,html,png,webp,woff2,mp3}'],
         navigateFallbackDenylist: [/^\/auth\//],
         runtimeCaching: [],
       },

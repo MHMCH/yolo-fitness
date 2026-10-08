@@ -1,5 +1,6 @@
 import { computed, onScopeDispose, ref, watch, type Ref } from 'vue'
 import { berlinDate, validTrainingDate } from '../lib/trainingDates'
+import { newId } from '../lib/uuid'
 import { commitSession, sessionRepository, type InsertRequest, type SessionRepository } from '../lib/sessionRepository'
 import type { Summary, TrainingSession } from '../types/database'
 
@@ -65,7 +66,7 @@ export function useTrainingSessions(identity: Ref<string>, repository: () => Ses
       error.value = 'Choose today or a valid past date.'; return
     }
     const current = generation
-    const request = pending.value ?? { id: crypto.randomUUID(), trained_on: date ?? today.value }
+    const request = pending.value ?? { id: newId(), trained_on: date ?? today.value }
     try { persistPending(request) }
     catch { error.value = 'Could not store a safe retry ID. Enable site storage before logging.'; return }
     pending.value = request
@@ -84,7 +85,9 @@ export function useTrainingSessions(identity: Ref<string>, repository: () => Ses
         if (code && ['42501', '23514', '23502', '22P02'].includes(code)) {
           persistPending(null)
           pending.value = null
-          error.value = 'The database rejected this entry. Check the date or ask the organizer to check permissions.'
+          error.value = /locked/i.test((failure as { message?: string })?.message ?? '')
+            ? 'That month is closed. Sessions can only be added to the current month.'
+            : 'The database rejected this entry. Check the date or ask the organizer to check permissions.'
         } else error.value = 'Save not confirmed. Retry checks the same entry; it will not log another session.'
       }
     } finally {
